@@ -1,122 +1,84 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { Route, Routes } from 'react-router-dom';
+import AuthLayout from './layouts/AuthLayout';
+import DashboardLayout from './layouts/DashboardLayout';
+import PublicLayout from './layouts/PublicLayout';
+import GuestRoute from './routes/GuestRoute';
+import ProtectedRoute from './routes/ProtectedRoute';
+import RoleRoute from './routes/RoleRoute';
 
-function App() {
-  const [count, setCount] = useState(0)
+import Landing from './pages/public/Landing';
+import Login from './pages/public/Login';
+import NotFound from './pages/public/NotFound';
+import Register from './pages/public/Register';
+import Profile from './pages/shared/Profile';
 
+import PatientAppointmentDetail from './pages/patient/AppointmentDetail';
+import BookAppointment from './pages/patient/BookAppointment';
+import PatientDashboard from './pages/patient/Dashboard';
+import MyAppointments from './pages/patient/MyAppointments';
+import TreatmentHistory from './pages/patient/TreatmentHistory';
+
+import StaffAppointmentDetail from './pages/staff/AppointmentDetail';
+import StaffAppointments from './pages/staff/Appointments';
+import StaffDashboard from './pages/staff/Dashboard';
+import Dentists from './pages/staff/Dentists';
+import PatientDetail from './pages/staff/PatientDetail';
+import Patients from './pages/staff/Patients';
+import Services from './pages/staff/Services';
+import StaffAccounts from './pages/staff/StaffAccounts';
+
+/**
+ * Route tree. Guards are "layout routes" that render <Outlet /> when access is allowed:
+ *   ProtectedRoute → must be logged in
+ *   RoleRoute      → must have one of the roles
+ *   GuestRoute     → must NOT be logged in (login/register)
+ */
+export default function App() {
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <Routes>
+      {/* Public website */}
+      <Route element={<PublicLayout />}>
+        <Route index element={<Landing />} />
+      </Route>
 
-      <div className="ticks"></div>
+      {/* Guests only: split-screen auth pages */}
+      <Route element={<GuestRoute />}>
+        <Route element={<AuthLayout />}>
+          <Route path="login" element={<Login />} />
+          <Route path="register" element={<Register />} />
+        </Route>
+      </Route>
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      <Route element={<ProtectedRoute />}>
+        {/* Patient area */}
+        <Route element={<RoleRoute roles={['patient']} />}>
+          <Route path="patient" element={<DashboardLayout />}>
+            <Route index element={<PatientDashboard />} />
+            <Route path="book" element={<BookAppointment />} />
+            <Route path="appointments" element={<MyAppointments />} />
+            <Route path="appointments/:id" element={<PatientAppointmentDetail />} />
+            <Route path="history" element={<TreatmentHistory />} />
+            <Route path="profile" element={<Profile />} />
+          </Route>
+        </Route>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+        {/* Staff area */}
+        <Route element={<RoleRoute roles={['staff']} />}>
+          <Route path="staff" element={<DashboardLayout />}>
+            <Route index element={<StaffDashboard />} />
+            <Route path="appointments" element={<StaffAppointments />} />
+            <Route path="appointments/:id" element={<StaffAppointmentDetail />} />
+            <Route path="patients" element={<Patients />} />
+            <Route path="patients/:id" element={<PatientDetail />} />
+            <Route path="dentists" element={<Dentists />} />
+            <Route path="services" element={<Services />} />
+            <Route path="accounts" element={<StaffAccounts />} />
+            <Route path="profile" element={<Profile />} />
+          </Route>
+        </Route>
+      </Route>
+
+      <Route path="*" element={<NotFound />} />
+    </Routes>
+  );
 }
-
-export default App
