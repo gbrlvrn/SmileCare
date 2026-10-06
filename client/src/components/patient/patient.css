@@ -1,0 +1,522 @@
+/* ==========================================================================
+   SmileCare — patient pages (dashboard, booking wizard, appointments, history)
+   Plain CSS on top of theme.css. Reuses the theme tokens (--sc-*).
+   ========================================================================== */
+
+/* ---------- Dashboard: next-appointment banner ---------- */
+.sc-welcome-banner {
+  position: relative;
+  overflow: hidden;
+  padding: 1.75rem;
+  border-radius: var(--sc-radius-lg);
+  color: #fff;
+  background:
+    radial-gradient(circle at 95% 0%, rgba(255, 255, 255, 0.18) 0, transparent 40%),
+    linear-gradient(120deg, #1e6fe8 0%, #1659c2 100%);
+  box-shadow: 0 12px 32px rgba(30, 111, 232, 0.28);
+}
+
+.sc-welcome-eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 255, 255, 0.75);
+  margin-bottom: 0.35rem;
+}
+
+.sc-welcome-title {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #fff;
+  margin-bottom: 0.75rem;
+}
+
+.sc-welcome-banner .sc-meta-list {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 0.9rem;
+  gap: 0.5rem 1.25rem;
+}
+
+.sc-welcome-date {
+  flex-shrink: 0;
+  min-width: 92px;
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.16);
+  text-align: center;
+  line-height: 1.15;
+}
+
+.sc-welcome-date .sc-date-month,
+.sc-welcome-date .sc-date-weekday {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.sc-welcome-date .sc-date-day {
+  display: block;
+  font-size: 2rem;
+}
+
+.sc-welcome-banner .btn-outline-light:hover {
+  color: var(--sc-primary);
+}
+
+/* ---------- Dashboard: quick actions + info ---------- */
+.sc-quick-actions {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.sc-quick-action {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem;
+  border: 1px solid var(--sc-border);
+  border-radius: 12px;
+  color: var(--sc-text);
+  text-decoration: none;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.sc-quick-action:hover {
+  border-color: #bfd7fb;
+  background: var(--sc-primary-soft);
+  color: var(--sc-text);
+}
+
+.sc-quick-action-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sc-info-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.sc-info-list li {
+  display: flex;
+  gap: 0.6rem;
+  padding: 0.5rem 0;
+}
+
+.sc-info-list li + li {
+  border-top: 1px solid var(--sc-border);
+}
+
+.sc-info-list svg {
+  color: var(--sc-primary);
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+}
+
+/* ---------- Lists ---------- */
+.sc-stack {
+  display: grid;
+  gap: 0.75rem;
+}
+
+/* Keeps the previous page visible (dimmed) while the next one loads. */
+.sc-list-loading {
+  opacity: 0.55;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+/* Segmented control (Upcoming / Past / All) */
+.sc-segmented {
+  display: inline-flex;
+  padding: 0.25rem;
+  gap: 0.25rem;
+  border-radius: 12px;
+  background: #eef2f8;
+}
+
+.sc-segmented .btn {
+  --bs-btn-padding-y: 0.4rem;
+  --bs-btn-padding-x: 1rem;
+  --bs-btn-font-size: 0.875rem;
+  border: 0;
+  border-radius: 9px;
+  color: var(--sc-muted);
+  background: transparent;
+  box-shadow: none;
+}
+
+.sc-segmented .btn:hover {
+  color: var(--sc-text);
+}
+
+.sc-segmented .btn.is-active {
+  background: #fff;
+  color: var(--sc-primary);
+  box-shadow: var(--sc-shadow-sm);
+}
+
+.sc-filter-select {
+  width: auto;
+  min-width: 170px;
+}
+
+@media (max-width: 575.98px) {
+  .sc-segmented {
+    display: flex;
+    width: 100%;
+  }
+
+  .sc-segmented .btn {
+    flex: 1;
+  }
+
+  .sc-toolbar .sc-search,
+  .sc-filter-select {
+    max-width: none;
+    width: 100%;
+  }
+}
+
+/* ---------- Booking wizard: stepper ---------- */
+.sc-stepper {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.5rem;
+  display: flex;
+}
+
+.sc-step {
+  position: relative;
+  flex: 1;
+  text-align: center;
+}
+
+/* Connector line between the circles */
+.sc-step:not(:first-child)::before {
+  content: '';
+  position: absolute;
+  top: 18px;
+  right: 50%;
+  left: -50%;
+  height: 2px;
+  background: var(--sc-border);
+}
+
+.sc-step.is-done:not(:first-child)::before,
+.sc-step.is-current:not(:first-child)::before {
+  background: var(--sc-primary);
+}
+
+.sc-step-btn {
+  position: relative;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--sc-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+button.sc-step-btn:hover .sc-step-circle {
+  box-shadow: 0 0 0 4px var(--sc-primary-soft);
+}
+
+.sc-step-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--sc-border);
+  background: #fff;
+  font-weight: 700;
+  transition: box-shadow 0.15s;
+}
+
+.sc-step.is-current .sc-step-btn {
+  color: var(--sc-primary);
+  font-weight: 600;
+}
+
+.sc-step.is-current .sc-step-circle {
+  border-color: var(--sc-primary);
+  color: var(--sc-primary);
+  box-shadow: 0 0 0 4px var(--sc-primary-soft);
+}
+
+.sc-step.is-done .sc-step-btn {
+  color: var(--sc-text);
+}
+
+.sc-step.is-done .sc-step-circle {
+  border-color: var(--sc-primary);
+  background: var(--sc-primary);
+  color: #fff;
+}
+
+/* ---------- Booking wizard: selectable option cards (native radios) ---------- */
+.sc-option-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.sc-option-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 1.1rem;
+  border: 1.5px solid var(--sc-border);
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s, background-color 0.15s;
+}
+
+.sc-option-card:hover {
+  border-color: #bfd7fb;
+  box-shadow: var(--sc-shadow-sm);
+}
+
+.sc-option-card.is-selected {
+  border-color: var(--sc-primary);
+  background: #f7faff;
+  box-shadow: 0 0 0 3px var(--sc-primary-soft);
+}
+
+/* Keyboard focus on the hidden radio shows a ring around the whole card. */
+.sc-option-card:has(.sc-option-input:focus-visible) {
+  outline: 3px solid rgba(30, 111, 232, 0.45);
+  outline-offset: 2px;
+}
+
+.sc-option-check {
+  position: absolute;
+  top: 0.85rem;
+  right: 0.85rem;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid var(--sc-border);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: #fff;
+}
+
+.sc-option-card.is-selected .sc-option-check {
+  border-color: var(--sc-primary);
+  background: var(--sc-primary);
+}
+
+.sc-option-title {
+  font-weight: 600;
+  padding-right: 1.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.sc-option-desc {
+  font-size: 0.85rem;
+  color: var(--sc-muted);
+  margin-bottom: 0.75rem;
+}
+
+.sc-option-footer {
+  margin-top: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--sc-border);
+  font-size: 0.85rem;
+  color: var(--sc-muted);
+}
+
+.sc-option-footer span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.sc-option-price {
+  color: var(--sc-text);
+  font-weight: 700;
+}
+
+/* ---------- Booking wizard: summary panel ---------- */
+.sc-booking-summary {
+  position: sticky;
+  top: 88px;
+  padding: 1.5rem;
+  border-radius: var(--sc-radius-lg);
+  color: #fff;
+  background: linear-gradient(160deg, #1e6fe8 0%, #1659c2 100%);
+  box-shadow: 0 12px 32px rgba(30, 111, 232, 0.25);
+}
+
+.sc-booking-summary h2 {
+  color: #fff;
+}
+
+.sc-summary-list {
+  margin: 0;
+}
+
+.sc-summary-list dt {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.sc-summary-list dd {
+  margin: 0.15rem 0 0.9rem;
+  font-weight: 500;
+}
+
+.sc-summary-list dd.is-empty {
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+  font-weight: 400;
+}
+
+.sc-summary-total {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding-top: 0.9rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.sc-wizard-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--sc-border);
+}
+
+@media (max-width: 991.98px) {
+  .sc-booking-summary {
+    position: static;
+  }
+}
+
+/* ---------- Detail pages ---------- */
+.sc-detail-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem 1.5rem;
+  margin: 0;
+}
+
+.sc-detail-list dt {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--sc-muted);
+  margin-bottom: 0.2rem;
+}
+
+.sc-detail-list dd {
+  margin: 0;
+  font-weight: 500;
+  overflow-wrap: anywhere;
+}
+
+.sc-detail-list .is-wide {
+  grid-column: 1 / -1;
+}
+
+.sc-detail-list .sc-text-block {
+  font-weight: 400;
+  white-space: pre-line; /* keep the patient's line breaks (plain text) */
+}
+
+@media (max-width: 575.98px) {
+  .sc-detail-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.sc-note-box {
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: var(--sc-app-bg);
+  font-size: 0.9rem;
+}
+
+/* ---------- Treatment history timeline ---------- */
+.sc-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  position: relative;
+}
+
+.sc-timeline-item {
+  position: relative;
+  padding-left: 2rem;
+  padding-bottom: 1.25rem;
+}
+
+/* Vertical line */
+.sc-timeline-item::before {
+  content: '';
+  position: absolute;
+  top: 0.5rem;
+  bottom: 0;
+  left: 7px;
+  width: 2px;
+  background: var(--sc-border);
+}
+
+.sc-timeline-item:last-child::before {
+  display: none;
+}
+
+/* Dot */
+.sc-timeline-item::after {
+  content: '';
+  position: absolute;
+  top: 0.35rem;
+  left: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  border: 4px solid var(--sc-success);
+}
+
+.sc-timeline-date {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--sc-muted);
+  margin-bottom: 0.5rem;
+}
