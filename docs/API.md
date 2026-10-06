@@ -40,12 +40,22 @@ Error:
 | 429 | Rate limit exceeded |
 | 500 | Server error (no stack trace in production) |
 
+Also: `400` for malformed JSON, `413` for bodies > 10 kb. An invalid ObjectId in the **URL** (`/:id`) returns `404 "<Resource> not found"`; an invalid ObjectId in the **body or query** (e.g. `dentist`, `serviceId`) returns `422`.
+
 ## 2. List query conventions
 
 All list endpoints accept:
-- `page` (default 1), `limit` (default 10, max 50)
-- `search` — case-insensitive partial match (regex-escaped on the server)
-- `sort` — optional, e.g. `-createdAt` (whitelisted fields only)
+- `page` (default 1), `limit` (default 10, max 50 — larger values are clamped to 50)
+- `search` — case-insensitive partial match (regex-escaped on the server), max 100 chars. Person names also match the full name (`"juan dela"`).
+- `sort` — optional, e.g. `-createdAt` (whitelisted fields only; unknown fields fall back to the default sort)
+  - appointments: `date`, `-date`, `createdAt`, `-createdAt`, `status`, `-status`
+  - patients / staff: `firstName`, `lastName`, `email`, `createdAt` (default `-createdAt`)
+  - services: `name`, `price`, `durationMinutes`, `createdAt` (default `name`)
+  - dentists: `firstName`, `lastName`, `specialization`, `createdAt` (default `lastName`)
+
+> **Free text:** free-text fields (`reason`, `cancellationReason`, `description`, `bio`, `address`, `medicalNotes`, treatment `diagnosis`/`procedure`/`notes`/`prescription`) are trimmed and HTML tags (and control characters) are stripped; there is **no entity encoding** — clients render them as plain text (React escapes output; never use `dangerouslySetInnerHTML`). E.g. `Patient's & co` round-trips unchanged; `<b>hi</b>` is stored as `hi`.
+>
+> **Clearing optional fields:** send `""` (or `null`) for an optional field to clear it (e.g. `phone`, `dateOfBirth`, `gender`, `address`, `medicalNotes`; dentist `email`/`phone`/`bio`; service `description`; treatment `notes`/`prescription`/`followUpDate`). Strings are stored as `""`; `dateOfBirth`, `gender` and `followUpDate` become `null`. Required fields (names, user `email`, …) cannot be cleared (422).
 
 ---
 
@@ -104,6 +114,7 @@ All list endpoints accept:
 - `status`: `pending | confirmed | completed | cancelled | no-show`
 - `treatment` is `null` until staff record it (only allowed when `status = completed`).
 - `endTime` is computed by the server: `startTime + service.durationMinutes`.
+- `reason` defaults to `""`. `dentist` / `service` may be `null` in **historical** appointments whose dentist/service was later deleted (deletion is only allowed when there are no upcoming appointments) — the client should render a fallback such as "Deleted dentist".
 
 #### Status transitions (server-enforced)
 | From | Allowed to (staff) | Allowed to (patient) |
@@ -158,40 +169,40 @@ Password policy: 8–64 chars, at least one uppercase, one lowercase, one digit.
 |---|---|---|---|
 | GET | `/dentists` | public | Active only unless staff passes `?all=true`. `search` matches name/specialization. Same pagination behaviour as services. |
 | GET | `/dentists/:id` | public | |
-| GET | `/dentists/:id/availability?date=YYYY-MM-DD&serviceId=...&excludeAppointmentId=...` | auth | 200 `{ date, dentistId, serviceId, slots: [ { startTime: "09:00", endTime: "09:30", available: true } ] }`. Returns `slots: []` with a `message` if the dentist doesn't work that day. Past slots marked unavailable. `excludeAppointmentId` lets rescheduling ignore the appointment's own slot. |
-| POST | `/dentists` | staff | `{ firstName, lastName, specialization, email?, phone?, bio?, workingDays, startTime, endTime, isActive? }` → 201 |
-| PUT | `/dentists/:id` | staff | partial update |
+| GET | `/dentists/:id/availability?date=YYYY-MM-DD&serviceId=...&excludeAppointmentId=...` | auth | 200 `{ date, dentistId, serviceId, slots: [ { startTime: "09:00", endTime: "09:30", available: true } ] }`. Returns `slots: []` with a `message` (both in the envelope `message` **and** `data.message`) if it is Sunday, the dentist doesn't work that day, or the dentist is inactive. Past slots marked unavailable. `excludeAppointmentId` lets rescheduling ignore the appointment's own slot (for patients it is only honoured if the appointment is theirs). |
+| POST | `/dentists` | staff | `{ firstName, lastName, specialization, email?, phone?, bio?, workingDays, startTime, endTime, isActive? }` → 201. `workingDays` is de-duplicated and sorted. |
+| PUT | `/dentists/:id` | staff | partial update (422 if resulting `endTime` ≤ `startTime`) |
 | DELETE | `/dentists/:id` | staff | 400 if the dentist has upcoming active appointments |
 
 ### Appointments — `/api/appointments`
 
 | Method | Path | Access | Notes |
 |---|---|---|---|
-| GET | `/appointments` | auth | Query: `page, limit, search, status, dentist, from, to, upcoming=true\|false, sort`. **Patient** → only their own. **Staff** → all; `search` matches patient name/email, dentist name, service name. Default sort: `date` desc, `startTime` desc (for `upcoming=true`: ascending). |
+| GET | `/appointments` | auth | Query: `page, limit, search, status, dentist, from, to, upcoming=true\|false, sort`. **Patient** → only their own; `search` matches dentist name/specialization and service name. **Staff** → all; `search` matches patient name/email, dentist name, service name. `upcoming=true` → `pending`/`confirmed` and not yet ended; `upcoming=false` → everything else (terminal status, or already ended). Default sort: `date` desc, `startTime` desc (for `upcoming=true`: ascending). |
 | GET | `/appointments/:id` | owner patient or staff | 403 if not owner |
-| POST | `/appointments` | patient or staff | Patient: `{ dentist, service, date, startTime, reason? }` (patient = self). Staff: same + required `patient` id. Created with `status: "pending"` (staff may pass `status: "confirmed"`). → 201 populated appointment |
-| PUT | `/appointments/:id` | owner patient / staff | Reschedule/edit: `{ dentist?, service?, date?, startTime?, reason? }`. Patient only while `pending`/`confirmed` and ≥ 24 h before current start; rescheduling resets status to `pending`. Staff: any non-terminal appointment. |
-| PATCH | `/appointments/:id/status` | owner patient / staff | `{ status, cancellationReason? }` — see transition table. |
-| PUT | `/appointments/:id/treatment` | staff | `{ diagnosis, procedure, notes?, prescription?, followUpDate? }` — only when `status = completed`. |
+| POST | `/appointments` | patient or staff | Patient: `{ dentist, service, date, startTime, reason? }` (patient = self; `patient`/`status` in the body are ignored). Staff: same + required `patient` id (404 if not a patient, 400 if deactivated). Created with `status: "pending"` (staff may pass `status: "confirmed"`). → 201 populated appointment |
+| PUT | `/appointments/:id` | owner patient / staff | Reschedule/edit: `{ dentist?, service?, date?, startTime?, reason? }`. Patient only while `pending`/`confirmed` and ≥ 24 h before current start; rescheduling resets status to `pending` (editing only `reason` does not). Staff: any non-terminal appointment. Booking rules are re-checked whenever dentist/service/date/startTime change. |
+| PATCH | `/appointments/:id/status` | owner patient / staff | `{ status, cancellationReason? }` — see transition table. 400 for an invalid transition or the same status. |
+| PUT | `/appointments/:id/treatment` | staff | `{ diagnosis, procedure, notes?, prescription?, followUpDate? }` — only when `status = completed`. Replaces any existing treatment; server sets `recordedBy`/`recordedAt`. |
 | DELETE | `/appointments/:id` | staff | Hard delete. 200 `{ message }` |
 
 ### Patients (staff management) — `/api/patients` (staff only)
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/patients` | `search` (name/email/phone), `isActive`, `page`, `limit`. Each item includes `appointmentCount`. |
+| GET | `/patients` | `search` (name/email/phone), `isActive=true\|false`, `page`, `limit`, `sort`. Always paginated. Each item includes `appointmentCount`. |
 | GET | `/patients/:id` | `{ patient, appointments: [...] }` (all appointments, newest first) |
 | POST | `/patients` | `{ firstName, lastName, email, password, phone?, dateOfBirth?, gender?, address?, medicalNotes? }` → 201 (walk-in registration) |
-| PUT | `/patients/:id` | profile fields + `isActive`; optional `password` to reset |
+| PUT | `/patients/:id` | profile fields (incl. `email`, 409 if taken) + `isActive`; optional `password` to reset |
 | DELETE | `/patients/:id` | Deletes patient **and** their appointments. 200 `{ message }` |
 
 ### Staff accounts — `/api/staff` (staff only)
 
 | Method | Path | Notes |
 |---|---|---|
-| GET | `/staff` | `search`, `page`, `limit` |
+| GET | `/staff` | `search` (name/email), `isActive`, `page`, `limit`, `sort`. Always paginated. |
 | POST | `/staff` | `{ firstName, lastName, email, password, phone? }` → 201 (role forced to `staff`) |
-| PUT | `/staff/:id` | `{ firstName?, lastName?, phone?, isActive?, password? }`. Cannot deactivate self. |
+| PUT | `/staff/:id` | `{ firstName?, lastName?, phone?, isActive?, password? }`. Cannot deactivate self (400). |
 | DELETE | `/staff/:id` | Cannot delete self (400). |
 
 ### Dashboard — `/api/dashboard`
@@ -204,6 +215,7 @@ Password policy: 8–64 chars, at least one uppercase, one lowercase, one digit.
   "recentAppointments": [<Appointment>, ...]   // last 5 by date desc
 }
 ```
+`upcoming` uses the same definition as `upcoming=true` above; `nextAppointment` is the earliest upcoming one. `recentAppointments` includes all statuses.
 
 **GET `/dashboard/staff`** (staff)
 ```json
@@ -215,6 +227,7 @@ Password policy: 8–64 chars, at least one uppercase, one lowercase, one digit.
   "topServices": [ { "serviceId": "...", "name": "Teeth Cleaning", "count": 18 }, ... ]  // top 5
 }
 ```
+`totals.patients` = all patient accounts; `dentists`/`services` = active ones; `pending` = `statusCounts.pending`. `statusCounts` covers all appointments (all dates). **Cancelled** appointments are excluded from `todaySchedule` (so `appointmentsToday = todaySchedule.length`), `trend` and `topServices`.
 
 ---
 
