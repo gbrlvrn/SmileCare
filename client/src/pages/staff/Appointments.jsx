@@ -33,7 +33,7 @@ export default function StaffAppointments() {
 
   // Load dentists for the filter dropdown
   const { data: dentists } = useFetch(
-    () => getDentists({ all: true }).then((res) => (Array.isArray(res.data) ? res.data : [])),
+    () => getDentists({ all: true }),
     [],
   );
 

@@ -48,14 +48,8 @@ export default function AppointmentFormModal({ show, onClose, onSaved, defaultPa
   const [error, setError] = useState('');
 
   // Fetch active dentists and services
-  const { data: dentists } = useFetch(
-    () => getDentists().then((res) => (Array.isArray(res.data) ? res.data : [])),
-    [],
-  );
-  const { data: services } = useFetch(
-    () => getServices().then((res) => (Array.isArray(res.data) ? res.data : [])),
-    [],
-  );
+  const { data: dentists } = useFetch(getDentists, []);
+  const { data: services } = useFetch(getServices, []);
 
   const selectedDentist = dentists?.find((d) => d._id === dentistId) || null;
 

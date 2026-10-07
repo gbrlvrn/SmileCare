@@ -37,7 +37,7 @@ import '../../components/patient/patient.css';
 export default function AppointmentDetail() {
   const { id } = useParams();
   const { data: appointment, loading, error, refetch } = useFetch(
-    () => getAppointment(id).then((res) => res.data),
+    () => getAppointment(id),
     [id],
   );
 

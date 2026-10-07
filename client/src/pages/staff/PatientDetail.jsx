@@ -28,7 +28,7 @@ export default function StaffPatientDetail() {
   const navigate = useNavigate();
 
   const { data, loading, error, refetch } = useFetch(
-    () => getPatient(id).then((res) => res.data),
+    () => getPatient(id),
     [id],
   );
 

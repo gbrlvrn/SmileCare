@@ -42,7 +42,7 @@ export default function StaffAppointmentDetail() {
   const { showToast } = useToast();
 
   const { data: appointment, loading, error, refetch } = useFetch(
-    () => getAppointment(id).then((res) => res.data),
+    () => getAppointment(id),
     [id],
   );
 

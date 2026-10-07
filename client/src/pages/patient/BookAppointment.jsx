@@ -62,15 +62,8 @@ export default function BookAppointment() {
   const maxDate = addDaysISO(minDate, MAX_DAYS_AHEAD);
 
   // Fetch available active services & dentists
-  const { data: services, loading: loadingServices, error: serviceError } = useFetch(
-    () => getServices().then((res) => (Array.isArray(res.data) ? res.data : [])),
-    [],
-  );
-
-  const { data: dentists, loading: loadingDentists, error: dentistError } = useFetch(
-    () => getDentists().then((res) => (Array.isArray(res.data) ? res.data : [])),
-    [],
-  );
+  const { data: services, loading: loadingServices, error: serviceError } = useFetch(getServices, []);
+  const { data: dentists, loading: loadingDentists, error: dentistError } = useFetch(getDentists, []);
 
   const selectedService = services?.find((s) => s._id === serviceId) || null;
   const selectedDentist = dentists?.find((d) => d._id === dentistId) || null;
