@@ -59,3 +59,22 @@ export const dentistLabel = (dentist) => (dentist ? fullName(dentist) : 'Dentist
 
 /** Service display name with a fallback for deleted services. */
 export const serviceLabel = (service) => service?.name || 'Service no longer available';
+
+/** Formats one or multiple services for an appointment display. */
+export const servicesLabel = (appointment) => {
+  if (appointment?.services && appointment.services.length > 0) {
+    return appointment.services.map((s) => s?.name || 'Service').join(', ');
+  }
+  return serviceLabel(appointment?.service);
+};
+
+/** Returns an array of services for an appointment. */
+export const appointmentServices = (appointment) => {
+  if (appointment?.services && appointment.services.length > 0) {
+    return appointment.services;
+  }
+  if (appointment?.service) {
+    return [appointment.service];
+  }
+  return [];
+};

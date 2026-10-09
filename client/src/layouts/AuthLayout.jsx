@@ -15,7 +15,7 @@ const BENEFITS = [
  */
 export default function AuthLayout() {
   return (
-    <div className="sc-auth">
+    <div className="sc-auth sc-auth-enter">
       <section className="sc-auth-panel" aria-label="About SmileCare">
         <Logo variant="light" />
 

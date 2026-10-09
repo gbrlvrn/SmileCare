@@ -1,14 +1,16 @@
 import {
-  CalendarCheck,
-  CalendarPlus,
   ClipboardPulse,
-  ClockHistory,
-  Grid1x2,
   People,
   PersonBadge,
-  PersonCircle,
   PersonGear,
 } from 'react-bootstrap-icons';
+import {
+  CalendarCheckIcon,
+  CalendarPlusIcon,
+  DashboardIcon,
+  ProfileIcon,
+  TreatmentHistoryIcon,
+} from '../components/icons/SidebarIcons';
 
 /** User roles returned by the API. */
 export const ROLES = {
@@ -34,8 +36,8 @@ export const ROLE_LABELS = {
  */
 export const APPOINTMENT_STATUSES = {
   pending: { label: 'Pending', variant: 'warning' },
-  confirmed: { label: 'Confirmed', variant: 'primary' },
-  completed: { label: 'Completed', variant: 'success' },
+  confirmed: { label: 'Confirmed', variant: 'success' },
+  completed: { label: 'Completed', variant: 'info' },
   cancelled: { label: 'Cancelled', variant: 'danger' },
   'no-show': { label: 'No-show', variant: 'secondary' },
 };
@@ -53,6 +55,110 @@ export const GENDERS = [
   { value: 'other', label: 'Other' },
   { value: 'prefer_not_to_say', label: 'Prefer not to say' },
 ];
+
+/** Standard dental specializations for dentists directory. */
+export const DENTAL_SPECIALIZATIONS = [
+  'General Dentistry',
+  'Orthodontics',
+  'Endodontics',
+  'Pediatric Dentistry',
+  'Cosmetic Dentistry',
+  'Pediatric and Cosmetic Dentistry',
+  'Periodontics',
+  'Prosthodontics',
+  'Oral and Maxillofacial Surgery',
+  'Implantology',
+];
+
+/** Standard dental services options for services directory. */
+export const STANDARD_SERVICES = [
+  {
+    name: 'Dental Check-up',
+    durationMinutes: 30,
+    price: 800,
+    description: 'Complete oral examination with dental charting and personalized hygiene advice.',
+  },
+  {
+    name: 'Teeth Cleaning',
+    durationMinutes: 60,
+    price: 1500,
+    description: 'Professional scaling and polishing to remove plaque and tartar build-up.',
+  },
+  {
+    name: 'Tooth Extraction',
+    durationMinutes: 60,
+    price: 2500,
+    description: 'Safe removal of damaged, decayed, or problematic teeth under local anesthesia.',
+  },
+  {
+    name: 'Dental Filling (Pasta)',
+    durationMinutes: 60,
+    price: 1500,
+    description: 'Composite tooth-colored restoration to repair cavities and restore tooth function.',
+  },
+  {
+    name: 'Teeth Whitening',
+    durationMinutes: 90,
+    price: 8000,
+    description: 'In-office professional whitening treatment for a brighter smile in a single visit.',
+  },
+  {
+    name: 'Root Canal Treatment',
+    durationMinutes: 120,
+    price: 12000,
+    description: 'Specialized therapy to treat infected tooth pulp, relieve pain, and save the natural tooth.',
+  },
+  {
+    name: 'Braces Consultation',
+    durationMinutes: 30,
+    price: 1000,
+    description: 'Comprehensive orthodontic evaluation and alignment treatment plan discussion.',
+  },
+  {
+    name: 'Fluoride Treatment',
+    durationMinutes: 30,
+    price: 1200,
+    description: 'Concentrated topical fluoride application to strengthen enamel and prevent cavities.',
+  },
+  {
+    name: 'Dental Sealants',
+    durationMinutes: 30,
+    price: 1000,
+    description: 'Protective resin coating applied to the chewing surfaces of molars to prevent decay.',
+  },
+  {
+    name: 'Dentures (Full/Partial)',
+    durationMinutes: 60,
+    price: 15000,
+    description: 'Custom removable dental appliances to replace missing teeth and restore speech and chewing.',
+  },
+  {
+    name: 'Dental Crown / Bridge',
+    durationMinutes: 90,
+    price: 10000,
+    description: 'Custom prosthetic cap or bridge to protect, cover, and restore damaged teeth.',
+  },
+  {
+    name: 'Wisdom Tooth Removal (Odontectomy)',
+    durationMinutes: 90,
+    price: 8000,
+    description: 'Surgical extraction of impacted or partially erupted third molars.',
+  },
+  {
+    name: 'Dental Veneers',
+    durationMinutes: 90,
+    price: 15000,
+    description: 'Custom porcelain or composite shells designed to cover the front surface of teeth.',
+  },
+  {
+    name: 'Periodontal Deep Cleaning',
+    durationMinutes: 60,
+    price: 3500,
+    description: 'Deep root planing and scaling below the gumline to treat gum disease.',
+  },
+];
+
+export const DENTAL_SERVICE_NAMES = STANDARD_SERVICES.map((s) => s.name);
 
 /** Weekdays as used by Dentist.workingDays (0 = Sunday, clinic closed). */
 export const WEEKDAYS = [
@@ -95,21 +201,21 @@ export const CLINIC_INFO = {
  * `end: true` makes NavLink active only on the exact path (used for dashboards).
  */
 export const PATIENT_NAV = [
-  { to: '/patient', label: 'Dashboard', icon: Grid1x2, end: true },
-  { to: '/patient/book', label: 'Book Appointment', icon: CalendarPlus },
-  { to: '/patient/appointments', label: 'My Appointments', icon: CalendarCheck },
-  { to: '/patient/history', label: 'Treatment History', icon: ClockHistory },
-  { to: '/patient/profile', label: 'Profile', icon: PersonCircle },
+  { to: '/patient', label: 'Dashboard', icon: DashboardIcon, end: true },
+  { to: '/patient/book', label: 'Book Appointment', icon: CalendarPlusIcon },
+  { to: '/patient/appointments', label: 'My Appointments', icon: CalendarCheckIcon },
+  { to: '/patient/history', label: 'Treatment History', icon: TreatmentHistoryIcon },
+  { to: '/patient/profile', label: 'Profile', icon: ProfileIcon },
 ];
 
 export const STAFF_NAV = [
-  { to: '/staff', label: 'Dashboard', icon: Grid1x2, end: true },
-  { to: '/staff/appointments', label: 'Appointments', icon: CalendarCheck },
+  { to: '/staff', label: 'Dashboard', icon: DashboardIcon, end: true },
+  { to: '/staff/appointments', label: 'Appointments', icon: CalendarCheckIcon },
   { to: '/staff/patients', label: 'Patients', icon: People },
   { to: '/staff/dentists', label: 'Dentists', icon: PersonBadge },
   { to: '/staff/services', label: 'Services', icon: ClipboardPulse },
   { to: '/staff/accounts', label: 'Staff Accounts', icon: PersonGear },
-  { to: '/staff/profile', label: 'Profile', icon: PersonCircle },
+  { to: '/staff/profile', label: 'Profile', icon: ProfileIcon },
 ];
 
 /** Navigation items by role. */

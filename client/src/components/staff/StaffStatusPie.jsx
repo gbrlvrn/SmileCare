@@ -3,8 +3,8 @@ import { APPOINTMENT_STATUSES } from '../../utils/constants';
 
 const STATUS_COLORS = {
   pending: '#F59E0B',   // warning amber
-  confirmed: '#1E6FE8', // primary blue
-  completed: '#10B981', // success green
+  confirmed: '#10B981', // success green
+  completed: '#2563EB', // primary blue
   cancelled: '#EF4444', // danger red
   'no-show': '#64748B', // slate
 };

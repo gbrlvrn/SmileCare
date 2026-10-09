@@ -19,6 +19,7 @@ export function AuthProvider({ children }) {
   const [token, setTokenState] = useState(() => getToken());
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(() => Boolean(getToken()));
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Restore the session on page refresh.
   useEffect(() => {
@@ -54,7 +55,7 @@ export function AuthProvider({ children }) {
       setUser(null);
       setTokenState(null);
       const from = { pathname: window.location.pathname, search: window.location.search };
-      navigate('/login?session=expired', { replace: true, state: { from } });
+      navigate('/?auth=login&session=expired', { replace: true, state: { from } });
     };
     window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
     return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized);
@@ -86,14 +87,38 @@ export function AuthProvider({ children }) {
     [startSession],
   );
 
-  /** Clears the session and goes to the login page. */
+  /** Requests a 6-digit OTP to the user's email for registration. */
+  const requestRegistrationOtp = useCallback(async (payload) => {
+    return authApi.requestRegistrationOtp(payload);
+  }, []);
+
+  /** Verifies the 6-digit OTP, creates the user account, and logs them in. */
+  const verifyRegistrationOtp = useCallback(
+    async (email, otp) => {
+      const res = await authApi.verifyRegistrationOtp(email, otp);
+      return startSession(res.data);
+    },
+    [startSession],
+  );
+
+  /** Resends a fresh 6-digit OTP code to the email. */
+  const resendRegistrationOtp = useCallback(async (email) => {
+    return authApi.resendRegistrationOtp(email);
+  }, []);
+
+  /** Clears the session and redirects to the landing page. */
   const logout = useCallback(() => {
-    // Tell the server (stateless JWT, so failures don't matter).
+    sessionStorage.setItem('smilecare_logging_out', '1');
+    setIsLoggingOut(true);
     authApi.logout().catch(() => {});
     clearToken();
     setTokenState(null);
     setUser(null);
-    navigate('/login', { replace: true });
+    navigate('/', { replace: true });
+    setTimeout(() => {
+      sessionStorage.removeItem('smilecare_logging_out');
+      setIsLoggingOut(false);
+    }, 500);
   }, [navigate]);
 
   /** Replaces the stored user (e.g. after editing the profile). */
@@ -104,13 +129,29 @@ export function AuthProvider({ children }) {
       user,
       token,
       isAuthenticated: Boolean(user && token),
+      isLoggingOut,
       loading,
       login,
       register,
+      requestRegistrationOtp,
+      verifyRegistrationOtp,
+      resendRegistrationOtp,
       logout,
       updateUser,
     }),
-    [user, token, loading, login, register, logout, updateUser],
+    [
+      user,
+      token,
+      isLoggingOut,
+      loading,
+      login,
+      register,
+      requestRegistrationOtp,
+      verifyRegistrationOtp,
+      resendRegistrationOtp,
+      logout,
+      updateUser,
+    ],
   );
 
   return (

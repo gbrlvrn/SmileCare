@@ -12,7 +12,7 @@ import { deleteAppointment, getAppointment, saveTreatment, updateAppointment } f
 import { getErrorMessage } from '../../api/errors';
 import EmptyState from '../../components/EmptyState';
 import FormInput from '../../components/FormInput';
-import Loader from '../../components/Loader';
+import AppointmentDetailSkeleton from '../../components/skeletons/AppointmentDetailSkeleton';
 import PageHeader from '../../components/PageHeader';
 import StatusBadge from '../../components/StatusBadge';
 import TimeSlotPicker from '../../components/TimeSlotPicker';
@@ -22,6 +22,7 @@ import StatusChangeModal from '../../components/staff/StatusChangeModal';
 import useAppointmentActions from '../../components/staff/useAppointmentActions';
 import useAvailability from '../../components/staff/useAvailability';
 import useDeleteAction from '../../components/staff/useDeleteAction';
+import { servicesLabel } from '../../components/patient/appointmentRules';
 import useFetch from '../../hooks/useFetch';
 import useToast from '../../hooks/useToast';
 import {
@@ -81,11 +82,12 @@ export default function StaffAppointmentDetail() {
   const availability = useAvailability({
     dentistId: appointment?.dentist?._id,
     serviceId: appointment?.service?._id,
+    serviceIds: appointment?.services?.map((s) => s._id),
     date: newDate,
     excludeAppointmentId: appointment?._id,
   });
 
-  if (loading) return <Loader fullPage label="Loading appointment details..." />;
+  if (loading) return <AppointmentDetailSkeleton />;
 
   if (error || !appointment) {
     return (
@@ -104,6 +106,7 @@ export default function StaffAppointmentDetail() {
 
   const {
     service,
+    services,
     dentist,
     patient,
     status,
@@ -193,7 +196,7 @@ export default function StaffAppointmentDetail() {
   return (
     <div>
       <PageHeader
-        title={service?.name || 'Appointment details'}
+        title={servicesLabel(appointment) || 'Appointment details'}
         subtitle={`Scheduled on ${formatDate(date, { weekday: 'long' })}`}
         backTo="/staff/appointments"
         backLabel="Back to appointments"
@@ -264,19 +267,62 @@ export default function StaffAppointmentDetail() {
             </div>
 
             <h3 className="h6 fw-bold text-primary mb-3">Service info</h3>
-            <dl className="row small mb-4">
-              <dt className="col-sm-4 text-muted">Service</dt>
-              <dd className="col-sm-8 fw-semibold">{service?.name || 'N/A'}</dd>
+            {services && services.length > 1 ? (
+              <div className="mb-4">
+                <div className="table-responsive mb-2">
+                  <table className="table table-sm table-bordered align-middle small mb-0 bg-white">
+                    <thead className="table-light">
+                      <tr>
+                        <th style={{ width: 40 }} className="text-center">#</th>
+                        <th>Dental service</th>
+                        <th>Duration</th>
+                        <th className="text-end">Standard rate</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {services.map((s, idx) => (
+                        <tr key={s._id || idx}>
+                          <td className="text-muted text-center">{idx + 1}</td>
+                          <td>
+                            <div className="fw-semibold text-body">{s.name}</div>
+                            {s.description && (
+                              <div className="text-muted" style={{ fontSize: '0.78rem' }}>
+                                {s.description}
+                              </div>
+                            )}
+                          </td>
+                          <td className="text-muted">{formatDuration(s.durationMinutes || 0)}</td>
+                          <td className="text-end fw-semibold text-primary">{formatCurrency(s.price || 0)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="table-light fw-bold">
+                      <tr>
+                        <td colSpan={2} className="text-end">Total</td>
+                        <td>{formatDuration(services.reduce((acc, s) => acc + (s.durationMinutes || 0), 0))}</td>
+                        <td className="text-end text-primary fs-6">
+                          {formatCurrency(services.reduce((acc, s) => acc + (s.price || 0), 0))}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <dl className="row small mb-4">
+                <dt className="col-sm-4 text-muted">Service</dt>
+                <dd className="col-sm-8 fw-semibold">{service?.name || 'N/A'}</dd>
 
-              <dt className="col-sm-4 text-muted">Duration</dt>
-              <dd className="col-sm-8">{formatDuration(service?.durationMinutes || 0)}</dd>
+                <dt className="col-sm-4 text-muted">Duration</dt>
+                <dd className="col-sm-8">{formatDuration(service?.durationMinutes || 0)}</dd>
 
-              <dt className="col-sm-4 text-muted">Standard rate</dt>
-              <dd className="col-sm-8 fw-bold text-primary">{formatCurrency(service?.price || 0)}</dd>
+                <dt className="col-sm-4 text-muted">Standard rate</dt>
+                <dd className="col-sm-8 fw-bold text-primary">{formatCurrency(service?.price || 0)}</dd>
 
-              <dt className="col-sm-4 text-muted">Description</dt>
-              <dd className="col-sm-8 text-muted">{service?.description || 'None'}</dd>
-            </dl>
+                <dt className="col-sm-4 text-muted">Description</dt>
+                <dd className="col-sm-8 text-muted">{service?.description || 'None'}</dd>
+              </dl>
+            )}
 
             <h3 className="h6 fw-bold text-primary mb-3">Patient visit reason</h3>
             <div className="p-3 bg-light rounded border small text-muted mb-3">

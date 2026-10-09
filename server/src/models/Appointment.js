@@ -22,6 +22,7 @@ const appointmentSchema = new mongoose.Schema(
     patient: { type: ObjectId, ref: 'User', required: [true, 'Patient is required'] },
     dentist: { type: ObjectId, ref: 'Dentist', required: [true, 'Dentist is required'] },
     service: { type: ObjectId, ref: 'Service', required: [true, 'Service is required'] },
+    services: [{ type: ObjectId, ref: 'Service' }],
     date: { type: String, required: [true, 'Date is required'] }, // "YYYY-MM-DD" clinic-local
     startTime: { type: String, required: [true, 'Start time is required'] }, // "HH:mm"
     endTime: { type: String, required: true }, // computed: startTime + service duration
@@ -46,9 +47,14 @@ const appointmentSchema = new mongoose.Schema(
   }
 );
 
-// Keep slotActive in sync with the status before every validation/save.
-appointmentSchema.pre('validate', function syncSlotActive() {
+// Keep slotActive and service/services in sync before every validation/save.
+appointmentSchema.pre('validate', function syncFields() {
   this.slotActive = !['cancelled', 'no-show'].includes(this.status);
+  if (this.services && this.services.length > 0 && !this.service) {
+    this.service = this.services[0];
+  } else if (this.service && (!this.services || this.services.length === 0)) {
+    this.services = [this.service];
+  }
 });
 
 // Database-level guarantee: one active booking per dentist per start time.

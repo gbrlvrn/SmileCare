@@ -20,23 +20,31 @@ const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
  *   loading: boolean, error: string, ready: boolean, refetch: () => void
  * }}
  */
-export default function useAvailability({ dentistId, serviceId, date, excludeAppointmentId }) {
-  const ready = Boolean(dentistId && serviceId && ISO_DATE_RE.test(date || ''));
+export default function useAvailability({ dentistId, serviceId, serviceIds, date, excludeAppointmentId }) {
+  const normalizedServiceIds = Array.isArray(serviceIds) && serviceIds.length > 0
+    ? serviceIds
+    : (serviceId ? [serviceId] : []);
+  const hasService = normalizedServiceIds.length > 0;
+  const ready = Boolean(dentistId && hasService && ISO_DATE_RE.test(date || ''));
+  const serviceKey = normalizedServiceIds.join(',');
 
   const { data, response, loading, error, refetch } = useFetch(
     () =>
       ready
         ? getAvailability(dentistId, {
             date,
-            serviceId,
+            ...(normalizedServiceIds.length > 1
+              ? { serviceIds: serviceKey }
+              : { serviceId: normalizedServiceIds[0] }),
             ...(excludeAppointmentId ? { excludeAppointmentId } : {}),
           })
         : Promise.resolve({ data: { slots: [] } }), // nothing to load yet
-    [dentistId, serviceId, date, excludeAppointmentId, ready],
+    [dentistId, serviceKey, date, excludeAppointmentId, ready],
   );
 
   return {
     slots: Array.isArray(data?.slots) ? data.slots : [],
+    durationMinutes: data?.durationMinutes,
     message: data?.message || response?.message || '',
     loading: ready && loading,
     error: ready ? error : '',

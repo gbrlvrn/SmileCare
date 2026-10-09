@@ -4,11 +4,12 @@
  *   { success: false, message, errors? }
  */
 class ApiError extends Error {
-  constructor(statusCode, message, errors) {
+  constructor(statusCode, message, errors, retryAfter) {
     super(message);
     this.name = 'ApiError';
     this.statusCode = statusCode;
     if (errors) this.errors = errors;
+    if (retryAfter !== undefined) this.retryAfter = retryAfter;
   }
 
   static badRequest(message) {
@@ -29,6 +30,10 @@ class ApiError extends Error {
 
   static conflict(message) {
     return new ApiError(409, message);
+  }
+
+  static locked(message = 'Account is temporarily locked', retryAfter = 60) {
+    return new ApiError(423, message, null, retryAfter);
   }
 
   /** 422 with a single field error, for checks that need data from the database. */

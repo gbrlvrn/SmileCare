@@ -4,12 +4,14 @@ import { Alert, Button, Col, Row, Table } from 'react-bootstrap';
 import {
   CalendarPlus,
   ExclamationTriangle,
+  GenderFemale,
+  GenderMale,
   JournalMedical,
   Trash,
 } from 'react-bootstrap-icons';
 import { deletePatient, getPatient } from '../../api/patientApi';
 import EmptyState from '../../components/EmptyState';
-import Loader from '../../components/Loader';
+import PatientDetailSkeleton from '../../components/skeletons/PatientDetailSkeleton';
 import PageHeader from '../../components/PageHeader';
 import StatusBadge from '../../components/StatusBadge';
 import AppointmentFormModal from '../../components/staff/AppointmentFormModal';
@@ -40,7 +42,7 @@ export default function StaffPatientDetail() {
     onDeleted: () => navigate('/staff/patients'),
   });
 
-  if (loading) return <Loader fullPage label="Loading patient record..." />;
+  if (loading) return <PatientDetailSkeleton />;
 
   if (error || !data) {
     return (
@@ -117,7 +119,17 @@ export default function StaffPatientDetail() {
               <dd className="col-8 font-monospace">{patient.phone || '—'}</dd>
 
               <dt className="col-4 text-muted">Gender</dt>
-              <dd className="col-8 text-capitalize">{patient.gender || '—'}</dd>
+              <dd className="col-8">
+                {patient.gender ? (
+                  <span className="d-inline-flex align-items-center gap-1 text-capitalize">
+                    {patient.gender === 'male' && <GenderMale className="text-primary" aria-hidden="true" />}
+                    {patient.gender === 'female' && <GenderFemale className="text-danger" aria-hidden="true" />}
+                    <span>{patient.gender === 'prefer_not_to_say' ? 'Prefer not to say' : patient.gender}</span>
+                  </span>
+                ) : (
+                  <span className="text-muted">—</span>
+                )}
+              </dd>
 
               <dt className="col-4 text-muted">Birth date</dt>
               <dd className="col-8">{formatDate(patient.dateOfBirth) || '—'}</dd>
@@ -177,7 +189,27 @@ export default function StaffPatientDetail() {
                           {formatTimeRange(appt.startTime, appt.endTime)}
                         </td>
                         <td className="small text-muted">{fullName(appt.dentist)}</td>
-                        <td className="small fw-semibold">{appt.service?.name}</td>
+                        <td className="small">
+                          {appt.services && appt.services.length > 1 ? (
+                            <div>
+                              <div
+                                className="fw-semibold text-truncate"
+                                style={{ maxWidth: '200px' }}
+                                title={appt.services.map((s) => s.name).join(', ')}
+                              >
+                                {appt.services.map((s) => s.name).join(', ')}
+                              </div>
+                              <span
+                                className="badge bg-primary-subtle text-primary border border-primary-subtle"
+                                style={{ fontSize: '0.65rem' }}
+                              >
+                                {appt.services.length} services
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="fw-semibold">{appt.service?.name}</span>
+                          )}
+                        </td>
                         <td>
                           <StatusBadge status={appt.status} />
                         </td>

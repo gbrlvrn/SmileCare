@@ -61,6 +61,10 @@ function errorHandler(err, req, res, next) {
 
   const body = { success: false, message: apiError.message };
   if (apiError.errors) body.errors = apiError.errors;
+  if (apiError.retryAfter !== undefined) {
+    body.retryAfter = apiError.retryAfter;
+    res.set('Retry-After', String(apiError.retryAfter));
+  }
   return res.status(apiError.statusCode).json(body);
 }
 

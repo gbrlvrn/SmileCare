@@ -1,5 +1,14 @@
 import { Alert, Button, Col, Form, Row, Spinner } from 'react-bootstrap';
-import { Envelope, Calendar3, Telephone } from 'react-bootstrap-icons';
+import {
+  Envelope,
+  Calendar3,
+  Telephone,
+  Person,
+  PersonGear,
+  ShieldLock,
+  ShieldCheck,
+  CheckCircleFill,
+} from 'react-bootstrap-icons';
 import { getErrorMessage } from '../../api/errors';
 import { changePassword, updateProfile } from '../../api/userApi';
 import FormInput from '../../components/FormInput';
@@ -85,49 +94,89 @@ export default function Profile() {
 
   return (
     <>
-      <PageHeader title="My profile" subtitle="Manage your personal information and password." />
+      <PageHeader
+        title="My profile"
+        subtitle="Manage your personal information, contact preferences, and account security."
+      />
 
-      <Row className="g-4">
-        {/* Summary card */}
-        <Col lg={4}>
-          <div className="sc-card sc-profile-summary">
-            <div className="sc-avatar sc-avatar-lg" aria-hidden="true">
+      {/* Profile Overview Hero Banner */}
+      <div className="sc-card sc-profile-hero mb-4 p-4">
+        <div className="d-flex flex-column flex-md-row align-items-center align-items-md-start gap-4">
+          <div className="sc-profile-hero-avatar-wrap">
+            <div className="sc-avatar sc-avatar-xl shadow-sm" aria-hidden="true">
               {initials(name)}
             </div>
-            <h2 className="h5 fw-semibold mt-3 mb-1">{name}</h2>
-            <span className="badge rounded-pill sc-badge sc-badge-primary">
-              {ROLE_LABELS[user?.role]}
-            </span>
-            <ul className="sc-profile-facts">
-              <li>
-                <Envelope aria-hidden="true" />
-                <span className="text-break">{user?.email}</span>
-              </li>
-              <li>
-                <Telephone aria-hidden="true" />
-                <span>{user?.phone || 'No phone number'}</span>
-              </li>
-              <li>
-                <Calendar3 aria-hidden="true" />
-                <span>Member since {formatDate(user?.createdAt)}</span>
-              </li>
-            </ul>
+            <span className="sc-profile-status-indicator" title="Active Account" />
           </div>
-        </Col>
 
-        <Col lg={8} className="d-flex flex-column gap-4">
-          {/* Profile details */}
-          <section className="sc-card" aria-labelledby="profile-details-title">
-            <h2 id="profile-details-title" className="sc-card-title">
-              Personal details
-            </h2>
+          <div className="flex-grow-1 text-center text-md-start">
+            <div className="d-flex flex-column flex-md-row align-items-center align-items-md-center gap-2 mb-2">
+              <h2 className="h4 fw-bold text-dark mb-0">{name}</h2>
+              <span className="badge rounded-pill bg-primary-subtle text-primary px-3 py-1 fw-semibold">
+                {ROLE_LABELS[user?.role] || 'Member'}
+              </span>
+              <span
+                className="badge rounded-pill bg-success-subtle text-success px-3 py-1 small fw-semibold d-inline-flex align-items-center"
+                style={{ gap: '0.35rem' }}
+              >
+                <CheckCircleFill size={12} />
+                <span>Active Account</span>
+              </span>
+            </div>
+
+            <div className="sc-profile-hero-meta">
+              <div className="sc-profile-meta-item">
+                <Envelope size={15} />
+                <span>{user?.email}</span>
+              </div>
+              <span className="sc-profile-meta-dot d-none d-md-inline">&bull;</span>
+              <div className="sc-profile-meta-item">
+                <Telephone size={15} />
+                <span>{user?.phone || 'No mobile added'}</span>
+              </div>
+              <span className="sc-profile-meta-dot d-none d-md-inline">&bull;</span>
+              <div className="sc-profile-meta-item">
+                <Calendar3 size={15} />
+                <span>Member since {formatDate(user?.createdAt)}</span>
+              </div>
+              {user?.gender && (
+                <>
+                  <span className="sc-profile-meta-dot d-none d-md-inline">&bull;</span>
+                  <div className="sc-profile-meta-item text-capitalize">
+                    <Person size={15} />
+                    <span>{user.gender}</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <Row className="g-4">
+        {/* Left Column: Personal details */}
+        <Col lg={7}>
+          <section className="sc-card p-4 h-100 d-flex flex-column" aria-labelledby="profile-details-title">
+            <div className="sc-profile-card-header">
+              <div className="sc-profile-card-icon">
+                <PersonGear size={20} />
+              </div>
+              <div>
+                <h3 id="profile-details-title" className="h5 fw-bold mb-0 text-dark">
+                  Personal Information
+                </h3>
+                <p className="text-muted small mb-0">Update your personal details and contact preferences</p>
+              </div>
+            </div>
+
             {profileForm.serverError && (
               <Alert variant="danger" className="small">
                 {profileForm.serverError}
               </Alert>
             )}
-            <Form noValidate onSubmit={profileForm.handleSubmit}>
-              <Row className="g-3">
+
+            <Form noValidate onSubmit={profileForm.handleSubmit} className="d-flex flex-column flex-grow-1">
+              <Row className="g-3 flex-grow-1">
                 <Col sm={6}>
                   <FormInput label="First name" autoComplete="given-name" required groupClassName="" {...profileForm.field('firstName')} />
                 </Col>
@@ -142,7 +191,7 @@ export default function Profile() {
                     value={user?.email || ''}
                     disabled
                     readOnly
-                    helpText="Email cannot be changed."
+                    helpText="Email is managed by clinic staff."
                     groupClassName=""
                   />
                 </Col>
@@ -161,19 +210,20 @@ export default function Profile() {
                 {isPatient && (
                   <Col xs={12}>
                     <FormInput
-                      label="Medical notes"
+                      label="Medical notes & health conditions"
                       as="textarea"
                       rows={3}
                       maxLength={500}
                       showCount
-                      placeholder="Allergies, medications or conditions your dentist should know about"
+                      placeholder="Allergies, current medications, or pre-existing oral health conditions your dentist should know about"
                       groupClassName=""
                       {...profileForm.field('medicalNotes')}
                     />
                   </Col>
                 )}
               </Row>
-              <div className="d-flex justify-content-end gap-2 mt-4">
+
+              <div className="d-flex justify-content-end gap-2 pt-3 mt-3 border-top">
                 <Button
                   variant="light"
                   type="button"
@@ -191,41 +241,62 @@ export default function Profile() {
               </div>
             </Form>
           </section>
+        </Col>
 
-          {/* Change password */}
-          <section className="sc-card" aria-labelledby="change-password-title">
-            <h2 id="change-password-title" className="sc-card-title">
-              Change password
-            </h2>
+        {/* Right Column: Security / Change password */}
+        <Col lg={5} className="d-flex flex-column gap-4">
+          <section className="sc-card p-4" aria-labelledby="change-password-title">
+            <div className="sc-profile-card-header">
+              <div className="sc-profile-card-icon">
+                <ShieldLock size={20} />
+              </div>
+              <div>
+                <h3 id="change-password-title" className="h5 fw-bold mb-0 text-dark">
+                  Security & Password
+                </h3>
+                <p className="text-muted small mb-0">Ensure your account is protected with a strong password</p>
+              </div>
+            </div>
+
             {passwordForm.serverError && (
               <Alert variant="danger" className="small">
                 {passwordForm.serverError}
               </Alert>
             )}
+
             <Form noValidate onSubmit={passwordForm.handleSubmit}>
-              <Row className="g-3">
-                <Col xs={12}>
-                  <PasswordInput label="Current password" autoComplete="current-password" required groupClassName="" {...passwordForm.field('currentPassword')} />
-                </Col>
-                <Col sm={6}>
-                  <PasswordInput
-                    label="New password"
-                    autoComplete="new-password"
-                    required
-                    groupClassName=""
-                    aria-describedby="new-password-rules"
-                    {...passwordForm.field('newPassword')}
-                  />
-                </Col>
-                <Col sm={6}>
-                  <PasswordInput label="Confirm new password" autoComplete="new-password" required groupClassName="" {...passwordForm.field('confirmPassword')} />
-                </Col>
-                <Col xs={12}>
-                  <PasswordChecklist id="new-password-rules" password={passwordForm.values.newPassword} />
-                </Col>
-              </Row>
-              <div className="d-flex justify-content-end mt-3">
-                <Button type="submit" disabled={passwordForm.submitting}>
+              <div className="d-flex flex-column gap-3">
+                <PasswordInput
+                  label="Current password"
+                  autoComplete="current-password"
+                  required
+                  groupClassName=""
+                  {...passwordForm.field('currentPassword')}
+                />
+                <PasswordInput
+                  label="New password"
+                  autoComplete="new-password"
+                  required
+                  groupClassName=""
+                  aria-describedby="new-password-rules"
+                  {...passwordForm.field('newPassword')}
+                />
+                <PasswordInput
+                  label="Confirm new password"
+                  autoComplete="new-password"
+                  required
+                  groupClassName=""
+                  {...passwordForm.field('confirmPassword')}
+                />
+                <PasswordChecklist
+                  id="new-password-rules"
+                  password={passwordForm.values.newPassword}
+                  confirmPassword={passwordForm.values.confirmPassword}
+                />
+              </div>
+
+              <div className="d-flex justify-content-end pt-3 mt-3 border-top">
+                <Button type="submit" disabled={passwordForm.submitting} className="w-100 w-sm-auto">
                   {passwordForm.submitting && (
                     <Spinner size="sm" animation="border" className="me-2" aria-hidden="true" />
                   )}
@@ -234,6 +305,18 @@ export default function Profile() {
               </div>
             </Form>
           </section>
+
+          {/* Account Security & Privacy Tip */}
+          <div className="sc-profile-tip-card d-flex align-items-start gap-3">
+            <ShieldCheck className="text-primary flex-shrink-0 mt-0.5" size={22} />
+            <div className="small">
+              <div className="fw-semibold text-dark mb-1">Account & Privacy Protection</div>
+              <p className="text-muted mb-0 lh-base">
+                Your medical and personal information is encrypted according to healthcare confidentiality standards.
+                To change your registered email, please coordinate with our clinic reception directly.
+              </p>
+            </div>
+          </div>
         </Col>
       </Row>
     </>

@@ -14,8 +14,9 @@ const { rangesOverlap } = require('../utils/slots');
 /** Fields returned when an appointment is populated (see docs/API.md). */
 const APPOINTMENT_POPULATE = [
   { path: 'patient', select: 'firstName lastName email phone' },
-  { path: 'dentist', select: 'firstName lastName specialization' },
+  { path: 'dentist', select: 'firstName lastName specialization bio phone email' },
   { path: 'service', select: 'name durationMinutes price' },
+  { path: 'services', select: 'name durationMinutes price' },
 ];
 
 /**
@@ -37,21 +38,43 @@ async function hasOverlap({ field, id, date, start, end, excludeId }) {
 
 /**
  * Enforces every booking rule from docs/API.md ("Booking rules").
+ * Supports single service or multiple services (sums duration).
  * Used when creating and when rescheduling (with excludeId = the appointment itself).
  *
- * @returns {Promise<{dentist, service, endTime: string}>}
+ * @returns {Promise<{dentist, service, services, endTime: string, totalDurationMinutes: number}>}
  */
-async function validateBooking({ dentistId, serviceId, patientId, date, startTime, excludeId, actorRole }) {
-  const [dentist, service] = await Promise.all([Dentist.findById(dentistId), Service.findById(serviceId)]);
+async function validateBooking({ dentistId, serviceId, serviceIds, patientId, date, startTime, excludeId, actorRole }) {
+  const normalizedIds = Array.isArray(serviceIds) && serviceIds.length > 0
+    ? serviceIds.map(String)
+    : (serviceId ? [String(serviceId)] : []);
+
+  if (normalizedIds.length === 0) {
+    throw ApiError.badRequest('At least one service is required');
+  }
+
+  const [dentist, services] = await Promise.all([
+    Dentist.findById(dentistId),
+    Service.find({ _id: { $in: normalizedIds } }),
+  ]);
 
   // Rule 6: dentist and service must exist and be active
   if (!dentist) throw ApiError.notFound('Dentist not found');
-  if (!service) throw ApiError.notFound('Service not found');
+  if (!services || services.length === 0) throw ApiError.notFound('Service not found');
+  if (services.length !== normalizedIds.length) {
+    throw ApiError.notFound('One or more selected services were not found');
+  }
   if (!dentist.isActive) throw ApiError.badRequest('This dentist is not currently accepting appointments');
-  if (!service.isActive) throw ApiError.badRequest('This service is currently unavailable');
+
+  const inactiveService = services.find((s) => !s.isActive);
+  if (inactiveService) throw ApiError.badRequest(`Service "${inactiveService.name}" is currently unavailable`);
+
+  const serviceMap = new Map(services.map((s) => [String(s._id), s]));
+  const orderedServices = normalizedIds.map((id) => serviceMap.get(id)).filter(Boolean);
+  const primaryService = orderedServices[0] || services[0];
+  const totalDurationMinutes = orderedServices.reduce((sum, s) => sum + s.durationMinutes, 0);
 
   const start = toMinutes(startTime);
-  const end = start + service.durationMinutes;
+  const end = start + totalDurationMinutes;
 
   // Rule 3a: 30-minute grid
   if (start % CLINIC.slotMinutes !== 0) {
@@ -93,7 +116,7 @@ async function validateBooking({ dentistId, serviceId, patientId, date, startTim
     );
   }
 
-  return { dentist, service, endTime: fromMinutes(end) };
+  return { dentist, service: primaryService, services: orderedServices, endTime: fromMinutes(end), totalDurationMinutes };
 }
 
 /** Patients may only cancel/reschedule at least 24 hours before the start. */

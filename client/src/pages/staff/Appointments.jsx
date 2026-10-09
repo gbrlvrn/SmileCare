@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Button, Col, Form, Row, Table } from 'react-bootstrap';
-import { Calendar2Check, CalendarPlus } from 'react-bootstrap-icons';
+import { useEffect, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Button, Col, Form, Row, Table, Badge } from 'react-bootstrap';
+import { Calendar2Check, CalendarPlus, X } from 'react-bootstrap-icons';
 import { deleteAppointment, getAppointments } from '../../api/appointmentApi';
 import { getDentists } from '../../api/dentistApi';
 import EmptyState from '../../components/EmptyState';
-import Loader from '../../components/Loader';
+import TableSkeleton from '../../components/skeletons/TableSkeleton';
 import PageHeader from '../../components/PageHeader';
 import Pagination from '../../components/Pagination';
 import SearchBar from '../../components/SearchBar';
@@ -26,10 +26,17 @@ import {
   formatTimeRange,
   fullName,
   initials,
+  todayISO,
 } from '../../utils/formatters';
 
 export default function StaffAppointments() {
   const [showBookingModal, setShowBookingModal] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  const urlStatus = searchParams.get('status') || '';
+  const urlFrom = searchParams.get('from') || '';
+  const urlTo = searchParams.get('to') || '';
+  const urlDentist = searchParams.get('dentist') || '';
 
   // Load dentists for the filter dropdown
   const { data: dentists } = useFetch(
@@ -50,9 +57,27 @@ export default function StaffAppointments() {
     resetFilters,
     refetch,
   } = useListQuery(getAppointments, {
-    initialFilters: { sort: '-date' },
+    initialFilters: {
+      sort: '-date',
+      ...(urlStatus ? { status: urlStatus } : {}),
+      ...(urlFrom ? { from: urlFrom } : {}),
+      ...(urlTo ? { to: urlTo } : {}),
+      ...(urlDentist ? { dentist: urlDentist } : {}),
+    },
     limit: 10,
   });
+
+  // Sync filters whenever the URL search parameters change
+  useEffect(() => {
+    const s = searchParams.get('status');
+    const f = searchParams.get('from');
+    const t = searchParams.get('to');
+    const d = searchParams.get('dentist');
+    setFilter('status', s || undefined);
+    setFilter('from', f || undefined);
+    setFilter('to', t || undefined);
+    setFilter('dentist', d || undefined);
+  }, [searchParams, setFilter]);
 
   const { changeStatus, busyId, modalProps } = useAppointmentActions({
     onChanged: refetch,
@@ -63,6 +88,30 @@ export default function StaffAppointments() {
     successMessage: 'Appointment deleted successfully.',
     onDeleted: refetch,
   });
+
+  const handleResetFilters = () => {
+    setSearchParams({});
+    resetFilters();
+  };
+
+  const handleClearDateFilter = () => {
+    setFilter('from', undefined);
+    setFilter('to', undefined);
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      next.delete('from');
+      next.delete('to');
+      return next;
+    });
+  };
+
+  const isTodayFilter = Boolean(
+    filters.from && filters.to && filters.from === filters.to && filters.from === todayISO(),
+  );
+
+  const hasActiveFilters = Boolean(
+    search || filters.status || filters.dentist || filters.from || filters.to,
+  );
 
   return (
     <div>
@@ -91,7 +140,16 @@ export default function StaffAppointments() {
           <Col sm={6} md={3}>
             <Form.Select
               value={filters.status || ''}
-              onChange={(e) => setFilter('status', e.target.value || undefined)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setFilter('status', val || undefined);
+                setSearchParams((prev) => {
+                  const next = new URLSearchParams(prev);
+                  if (val) next.set('status', val);
+                  else next.delete('status');
+                  return next;
+                });
+              }}
               aria-label="Filter by status"
             >
               <option value="">All statuses</option>
@@ -106,7 +164,16 @@ export default function StaffAppointments() {
           <Col sm={6} md={3}>
             <Form.Select
               value={filters.dentist || ''}
-              onChange={(e) => setFilter('dentist', e.target.value || undefined)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setFilter('dentist', val || undefined);
+                setSearchParams((prev) => {
+                  const next = new URLSearchParams(prev);
+                  if (val) next.set('dentist', val);
+                  else next.delete('dentist');
+                  return next;
+                });
+              }}
               aria-label="Filter by dentist"
             >
               <option value="">All dentists</option>
@@ -119,18 +186,34 @@ export default function StaffAppointments() {
           </Col>
 
           <Col md={2} className="d-flex align-items-center justify-content-md-end">
-            {(search || filters.status || filters.dentist) && (
-              <Button variant="link" size="sm" className="text-muted p-0 text-decoration-none" onClick={resetFilters}>
+            {hasActiveFilters && (
+              <Button variant="link" size="sm" className="text-muted p-0 text-decoration-none" onClick={handleResetFilters}>
                 Reset filters
               </Button>
             )}
           </Col>
         </Row>
+
+        {(filters.from || filters.to) && (
+          <div className="mt-3 pt-2.5 border-top d-flex align-items-center gap-2">
+            <span className="small text-muted">Active date range:</span>
+            <span className="badge rounded-pill bg-primary-subtle text-primary fw-semibold px-2.5 py-1 d-inline-flex align-items-center gap-1">
+              <span>{isTodayFilter ? "Today's appointments" : `${filters.from || ''} to ${filters.to || ''}`}</span>
+              <button
+                type="button"
+                className="btn-close btn-close-white"
+                style={{ fontSize: '0.65rem' }}
+                aria-label="Clear date filter"
+                onClick={handleClearDateFilter}
+              />
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Table list */}
       {loading && appointments.length === 0 ? (
-        <Loader label="Loading appointments..." className="my-5" />
+        <TableSkeleton columns={6} rows={7} />
       ) : error ? (
         <div className="alert alert-danger d-flex justify-content-between align-items-center">
           <div>{error}</div>
@@ -195,10 +278,36 @@ export default function StaffAppointments() {
                       <div className="small text-muted">{appt.dentist?.specialization}</div>
                     </td>
                     <td>
-                      <div className="small fw-semibold">{appt.service?.name}</div>
-                      <div className="small text-muted">
-                        {formatDuration(appt.service?.durationMinutes || 0)} &bull; {formatCurrency(appt.service?.price || 0)}
-                      </div>
+                      {appt.services && appt.services.length > 1 ? (
+                        <div>
+                          <div
+                            className="small fw-semibold text-truncate"
+                            style={{ maxWidth: '240px' }}
+                            title={appt.services.map((s) => s.name).join(', ')}
+                          >
+                            {appt.services.map((s) => s.name).join(', ')}
+                          </div>
+                          <div className="d-flex align-items-center gap-1 mt-1">
+                            <span
+                              className="badge bg-primary-subtle text-primary border border-primary-subtle"
+                              style={{ fontSize: '0.7rem' }}
+                            >
+                              {appt.services.length} services
+                            </span>
+                            <span className="small text-muted">
+                              {formatDuration(appt.services.reduce((acc, s) => acc + (s.durationMinutes || 0), 0))} &bull;{' '}
+                              {formatCurrency(appt.services.reduce((acc, s) => acc + (s.price || 0), 0))}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="small fw-semibold">{appt.service?.name}</div>
+                          <div className="small text-muted">
+                            {formatDuration(appt.service?.durationMinutes || 0)} &bull; {formatCurrency(appt.service?.price || 0)}
+                          </div>
+                        </div>
+                      )}
                     </td>
                     <td>
                       <StatusBadge status={appt.status} />

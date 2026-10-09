@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, Button, Col, Form, Modal, Row, Table } from 'react-bootstrap';
-import { PencilSquare, PersonBadge, PersonPlus, Trash } from 'react-bootstrap-icons';
+import { Camera, PencilSquare, PersonBadge, PersonPlus, Trash, Upload, XCircle } from 'react-bootstrap-icons';
 import { createDentist, deleteDentist, getDentists, updateDentist } from '../../api/dentistApi';
 import EmptyState from '../../components/EmptyState';
 import FormInput from '../../components/FormInput';
-import Loader from '../../components/Loader';
+import TableSkeleton from '../../components/skeletons/TableSkeleton';
 import PageHeader from '../../components/PageHeader';
 import Pagination from '../../components/Pagination';
 import SearchBar from '../../components/SearchBar';
@@ -13,8 +13,14 @@ import { validateDentistForm } from '../../components/staff/staffValidators';
 import useDeleteAction from '../../components/staff/useDeleteAction';
 import useListQuery from '../../hooks/useListQuery';
 import useToast from '../../hooks/useToast';
-import { WEEKDAYS } from '../../utils/constants';
+import { DENTAL_SPECIALIZATIONS, WEEKDAYS } from '../../utils/constants';
 import { formatTime, formatWorkingDays, fullName, initials } from '../../utils/formatters';
+import { validateEmail, validateName, validatePhMobile } from '../../utils/validators';
+import {
+  getDentistPortrait,
+  DENTIST_PRESET_OPTIONS,
+  processProfileImageFile,
+} from '../../utils/dentistImages';
 
 const INITIAL_FORM = {
   firstName: '',
@@ -23,6 +29,7 @@ const INITIAL_FORM = {
   email: '',
   phone: '',
   bio: '',
+  photo: '',
   workingDays: [1, 2, 3, 4, 5], // Mon-Fri default
   startTime: '09:00',
   endTime: '17:00',
@@ -55,12 +62,17 @@ export default function StaffDentists() {
     limit: 10,
   });
 
+  const fileInputRef = useRef(null);
   const [modalMode, setModalMode] = useState(null); // 'add' | 'edit' | null
   const [targetDentist, setTargetDentist] = useState(null);
   const [formValues, setFormValues] = useState(INITIAL_FORM);
   const [formErrors, setFormErrors] = useState({});
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [photoProcessing, setPhotoProcessing] = useState(false);
+  const [photoError, setPhotoError] = useState('');
+  const [isCustomSpecialization, setIsCustomSpecialization] = useState(false);
+  const [customSpecializationText, setCustomSpecializationText] = useState('');
 
   const deleteAction = useDeleteAction({
     deleteFn: (d) => deleteDentist(d._id),
@@ -72,20 +84,28 @@ export default function StaffDentists() {
     setModalMode('add');
     setTargetDentist(null);
     setFormValues(INITIAL_FORM);
+    setIsCustomSpecialization(false);
+    setCustomSpecializationText('');
     setFormErrors({});
     setServerError('');
+    setPhotoError('');
   };
 
   const openEditModal = (d) => {
     setModalMode('edit');
     setTargetDentist(d);
+    const spec = d.specialization || '';
+    const isStandard = DENTAL_SPECIALIZATIONS.includes(spec);
+    setIsCustomSpecialization(!isStandard && Boolean(spec));
+    setCustomSpecializationText(!isStandard ? spec : '');
     setFormValues({
       firstName: d.firstName || '',
       lastName: d.lastName || '',
-      specialization: d.specialization || '',
+      specialization: spec || 'General Dentistry',
       email: d.email || '',
       phone: d.phone || '',
       bio: d.bio || '',
+      photo: d.photo || '',
       workingDays: Array.isArray(d.workingDays) ? d.workingDays : [1, 2, 3, 4, 5],
       startTime: d.startTime || '09:00',
       endTime: d.endTime || '17:00',
@@ -93,11 +113,50 @@ export default function StaffDentists() {
     });
     setFormErrors({});
     setServerError('');
+    setPhotoError('');
   };
 
   const closeModal = () => {
     setModalMode(null);
     setTargetDentist(null);
+    setPhotoError('');
+    setIsCustomSpecialization(false);
+    setCustomSpecializationText('');
+  };
+
+  const handleSpecializationSelect = (e) => {
+    const selected = e.target.value;
+    if (selected === 'OTHER') {
+      setIsCustomSpecialization(true);
+      handleFieldChange('specialization', customSpecializationText);
+    } else {
+      setIsCustomSpecialization(false);
+      handleFieldChange('specialization', selected);
+    }
+  };
+
+  const handleCustomSpecializationChange = (e) => {
+    const val = e.target.value;
+    setCustomSpecializationText(val);
+    handleFieldChange('specialization', val);
+  };
+
+  const handlePhotoFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPhotoError('');
+    setPhotoProcessing(true);
+    try {
+      const dataUrl = await processProfileImageFile(file);
+      handleFieldChange('photo', dataUrl);
+    } catch (err) {
+      setPhotoError(err.message || 'Failed to process image');
+    } finally {
+      setPhotoProcessing(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
+    }
   };
 
   const handleFieldChange = (name, value) => {
@@ -105,6 +164,69 @@ export default function StaffDentists() {
     if (formErrors[name]) {
       setFormErrors((prev) => ({ ...prev, [name]: '' }));
     }
+  };
+
+  const handleFirstNameChange = (e) => {
+    const lettersOnly = e.target.value.replace(/[^a-zA-ZÀ-ÿ\s]/g, '').slice(0, 30);
+    handleFieldChange('firstName', lettersOnly);
+    if (formErrors.firstName) {
+      setFormErrors((prev) => ({ ...prev, firstName: validateName(lettersOnly, 'First name', 30) }));
+    }
+  };
+
+  const handleFirstNameBlur = () => {
+    setFormErrors((prev) => ({
+      ...prev,
+      firstName: validateName(formValues.firstName, 'First name', 30),
+    }));
+  };
+
+  const handleLastNameChange = (e) => {
+    const lettersOnly = e.target.value.replace(/[^a-zA-ZÀ-ÿ\s]/g, '').slice(0, 30);
+    handleFieldChange('lastName', lettersOnly);
+    if (formErrors.lastName) {
+      setFormErrors((prev) => ({ ...prev, lastName: validateName(lettersOnly, 'Last name', 30) }));
+    }
+  };
+
+  const handleLastNameBlur = () => {
+    setFormErrors((prev) => ({
+      ...prev,
+      lastName: validateName(formValues.lastName, 'Last name', 30),
+    }));
+  };
+
+  const handleEmailChange = (e) => {
+    const val = e.target.value;
+    handleFieldChange('email', val);
+    if (formErrors.email) {
+      setFormErrors((prev) => ({ ...prev, email: validateEmail(val) }));
+    }
+  };
+
+  const handleEmailBlur = () => {
+    setFormErrors((prev) => ({
+      ...prev,
+      email: validateEmail(formValues.email),
+    }));
+  };
+
+  const handlePhoneChange = (e) => {
+    let raw = e.target.value.replace(/\D/g, '').slice(0, 11);
+    handleFieldChange('phone', raw);
+    if (formErrors.phone) {
+      setFormErrors((prev) => ({
+        ...prev,
+        phone: validatePhMobile(raw, { required: true, label: 'Phone number' }),
+      }));
+    }
+  };
+
+  const handlePhoneBlur = () => {
+    setFormErrors((prev) => ({
+      ...prev,
+      phone: validatePhMobile(formValues.phone, { required: true, label: 'Phone number' }),
+    }));
   };
 
   const handleDayToggle = (dayNum) => {
@@ -123,7 +245,15 @@ export default function StaffDentists() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const isEdit = modalMode === 'edit';
-    const clientErrors = validateDentistForm(formValues, { isEdit });
+    const payload = {
+      ...formValues,
+      firstName: formValues.firstName.trim(),
+      lastName: formValues.lastName.trim(),
+      email: formValues.email.trim(),
+      phone: formValues.phone.trim(),
+      specialization: formValues.specialization.trim(),
+    };
+    const clientErrors = validateDentistForm(payload, { isEdit });
 
     if (Object.keys(clientErrors).length > 0) {
       setFormErrors(clientErrors);
@@ -135,10 +265,10 @@ export default function StaffDentists() {
 
     try {
       if (isEdit) {
-        await updateDentist(targetDentist._id, formValues);
+        await updateDentist(targetDentist._id, payload);
         showToast({ type: 'success', message: 'Dentist profile updated.' });
       } else {
-        await createDentist(formValues);
+        await createDentist(payload);
         showToast({ type: 'success', message: 'Dentist added successfully.' });
       }
 
@@ -207,7 +337,7 @@ export default function StaffDentists() {
 
       {/* Dentists table */}
       {loading && dentists.length === 0 ? (
-        <Loader label="Loading dentists..." className="my-5" />
+        <TableSkeleton columns={6} rows={6} hasAvatar={true} />
       ) : error ? (
         <div className="alert alert-danger d-flex justify-content-between align-items-center">
           <div>{error}</div>
@@ -244,10 +374,16 @@ export default function StaffDentists() {
                 {dentists.map((d) => (
                   <tr key={d._id}>
                     <td>
-                      <div className="d-flex align-items-center gap-2">
-                        <span className="sc-avatar" aria-hidden="true">
-                          {initials(fullName(d))}
-                        </span>
+                      <div className="d-flex align-items-center gap-3">
+                        <img
+                          src={getDentistPortrait(d)}
+                          alt={fullName(d)}
+                          className="sc-dentist-table-avatar"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = DENTIST_PRESET_OPTIONS[0].image;
+                          }}
+                        />
                         <div>
                           <div className="fw-semibold text-body">{fullName(d)}</div>
                           <div className="small text-muted text-truncate" style={{ maxWidth: 220 }}>
@@ -321,14 +457,101 @@ export default function StaffDentists() {
           <Modal.Body className="p-4">
             {serverError && <Alert variant="danger">{serverError}</Alert>}
 
+            {/* Profile image picker & uploader */}
+            <div className="sc-dentist-photo-section p-3 mb-4">
+              <Form.Label className="fw-semibold d-block mb-2">Profile image</Form.Label>
+              <div className="d-flex flex-wrap align-items-center gap-3">
+                <div className="position-relative flex-shrink-0">
+                  <img
+                    src={
+                      formValues.photo ||
+                      (modalMode === 'edit' && targetDentist
+                        ? getDentistPortrait({ ...targetDentist, ...formValues })
+                        : getDentistPortrait(formValues))
+                    }
+                    alt="Dentist portrait preview"
+                    className="sc-dentist-preview-avatar"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = DENTIST_PRESET_OPTIONS[0].image;
+                    }}
+                  />
+                </div>
+
+                <div className="flex-grow-1">
+                  <div className="d-flex flex-wrap align-items-center gap-2 mb-2">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/png, image/jpeg, image/jpg, image/webp"
+                      className="d-none"
+                      onChange={handlePhotoFileChange}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline-primary"
+                      size="sm"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={photoProcessing}
+                    >
+                      <Upload className="me-1" />
+                      {photoProcessing ? 'Processing...' : 'Upload photo'}
+                    </Button>
+
+                    {formValues.photo && (
+                      <Button
+                        type="button"
+                        variant="outline-secondary"
+                        size="sm"
+                        onClick={() => handleFieldChange('photo', '')}
+                      >
+                        <XCircle className="me-1" />
+                        Reset photo
+                      </Button>
+                    )}
+                  </div>
+
+                  <div className="small text-muted mb-2">
+                    Upload a custom portrait (PNG, JPG, WEBP) or select from standard clinic portraits:
+                  </div>
+
+                  {/* Preset Portraits Quick Pick */}
+                  <div className="d-flex flex-wrap align-items-center gap-2">
+                    <span className="small text-muted fw-medium me-1">Presets:</span>
+                    {DENTIST_PRESET_OPTIONS.map((preset) => {
+                      const isSelected = formValues.photo === preset.image;
+                      return (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          className={`sc-dentist-preset-btn ${isSelected ? 'is-active' : ''}`}
+                          title={preset.label}
+                          onClick={() => handleFieldChange('photo', preset.image)}
+                        >
+                          <img
+                            src={preset.image}
+                            alt={preset.label}
+                            className="rounded-circle object-fit-cover w-100 h-100"
+                          />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+              {photoError && <div className="text-danger small mt-2">{photoError}</div>}
+            </div>
+
             <Row className="g-3 mb-3">
               <Col md={6}>
                 <FormInput
                   label="First name"
                   name="firstName"
                   value={formValues.firstName}
-                  onChange={(e) => handleFieldChange('firstName', e.target.value)}
+                  onChange={handleFirstNameChange}
+                  onBlur={handleFirstNameBlur}
                   error={formErrors.firstName}
+                  maxLength={30}
                   required
                 />
               </Col>
@@ -337,8 +560,10 @@ export default function StaffDentists() {
                   label="Last name"
                   name="lastName"
                   value={formValues.lastName}
-                  onChange={(e) => handleFieldChange('lastName', e.target.value)}
+                  onChange={handleLastNameChange}
+                  onBlur={handleLastNameBlur}
                   error={formErrors.lastName}
+                  maxLength={30}
                   required
                 />
               </Col>
@@ -346,24 +571,72 @@ export default function StaffDentists() {
 
             <Row className="g-3 mb-3">
               <Col md={6}>
-                <FormInput
-                  label="Specialization"
-                  name="specialization"
-                  value={formValues.specialization}
-                  onChange={(e) => handleFieldChange('specialization', e.target.value)}
-                  error={formErrors.specialization}
-                  required
-                  placeholder="e.g. Orthodontics, Endodontics, Pediatrics"
-                />
+                <Form.Group controlId="dentist-specialization-select">
+                  <Form.Label className="fw-semibold">
+                    Specialization
+                    <span className="text-danger ms-1" aria-hidden="true">
+                      *
+                    </span>
+                  </Form.Label>
+                  <Form.Select
+                    value={isCustomSpecialization ? 'OTHER' : formValues.specialization}
+                    onChange={handleSpecializationSelect}
+                    isInvalid={!isCustomSpecialization && Boolean(formErrors.specialization)}
+                  >
+                    <option value="" disabled>
+                      Select specialization...
+                    </option>
+                    {DENTAL_SPECIALIZATIONS.map((spec) => (
+                      <option key={spec} value={spec}>
+                        {spec}
+                      </option>
+                    ))}
+                    <option value="OTHER">Other (specify below)...</option>
+                  </Form.Select>
+                  {!isCustomSpecialization && formErrors.specialization && (
+                    <Form.Control.Feedback type="invalid">
+                      {formErrors.specialization}
+                    </Form.Control.Feedback>
+                  )}
+                </Form.Group>
+
+                {isCustomSpecialization && (
+                  <Form.Group controlId="dentist-custom-specialization" className="mt-2">
+                    <Form.Label className="small fw-semibold text-muted">
+                      Specify specialization
+                      <span className="text-danger ms-1" aria-hidden="true">
+                        *
+                      </span>
+                    </Form.Label>
+                    <Form.Control
+                      type="text"
+                      placeholder="e.g. Dental Radiology, Dental Public Health"
+                      value={customSpecializationText}
+                      onChange={handleCustomSpecializationChange}
+                      isInvalid={Boolean(formErrors.specialization)}
+                      maxLength={100}
+                      autoFocus
+                    />
+                    {formErrors.specialization && (
+                      <Form.Control.Feedback type="invalid">
+                        {formErrors.specialization}
+                      </Form.Control.Feedback>
+                    )}
+                  </Form.Group>
+                )}
               </Col>
               <Col md={6}>
                 <FormInput
-                  label="Email address (optional)"
+                  label="Email address"
                   name="email"
                   type="email"
+                  placeholder="name@smilecare.com"
                   value={formValues.email}
-                  onChange={(e) => handleFieldChange('email', e.target.value)}
+                  onChange={handleEmailChange}
+                  onBlur={handleEmailBlur}
                   error={formErrors.email}
+                  maxLength={100}
+                  required
                 />
               </Col>
             </Row>
@@ -371,12 +644,17 @@ export default function StaffDentists() {
             <Row className="g-3 mb-3">
               <Col md={6}>
                 <FormInput
-                  label="Phone number (optional)"
+                  label="Phone number"
                   name="phone"
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="e.g. 09171234501"
                   value={formValues.phone}
-                  onChange={(e) => handleFieldChange('phone', e.target.value)}
+                  onChange={handlePhoneChange}
+                  onBlur={handlePhoneBlur}
                   error={formErrors.phone}
-                  placeholder="e.g. 09171234567"
+                  maxLength={11}
+                  required
                 />
               </Col>
               <Col md={6}>

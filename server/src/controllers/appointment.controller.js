@@ -40,7 +40,11 @@ async function buildSearchCondition(search, includePatients) {
     Service.distinct('_id', { name: searchRegex(search) }),
   ]);
 
-  const or = [{ dentist: { $in: dentistIds } }, { service: { $in: serviceIds } }];
+  const or = [
+    { dentist: { $in: dentistIds } },
+    { service: { $in: serviceIds } },
+    { services: { $in: serviceIds } },
+  ];
   if (includePatients) or.push({ patient: { $in: patientIds } });
   return { $or: or };
 }
@@ -95,7 +99,7 @@ const getAppointment = asyncHandler(async (req, res) => {
  * create the appointment directly as "confirmed".
  */
 const createAppointment = asyncHandler(async (req, res) => {
-  const { dentist, service, date, startTime, reason } = req.body;
+  const { dentist, service, services, date, startTime, reason } = req.body;
   let patientId = req.user._id;
   let status = 'pending';
 
@@ -110,6 +114,7 @@ const createAppointment = asyncHandler(async (req, res) => {
   const booking = await validateBooking({
     dentistId: dentist,
     serviceId: service,
+    serviceIds: services,
     patientId,
     date,
     startTime,
@@ -122,6 +127,7 @@ const createAppointment = asyncHandler(async (req, res) => {
     patient: patientId,
     dentist: booking.dentist._id,
     service: booking.service._id,
+    services: booking.services ? booking.services.map((s) => s._id) : [booking.service._id],
     date,
     startTime,
     endTime: booking.endTime,
@@ -146,9 +152,22 @@ const updateAppointment = asyncHandler(async (req, res) => {
   }
   if (isPatient(req)) assertPatientCanChange(appointment);
 
-  const { dentist, service, date, startTime, reason } = req.body;
+  const { dentist, service, services, date, startTime, reason } = req.body;
+  const currentServiceIds = (appointment.services && appointment.services.length > 0)
+    ? appointment.services.map(String)
+    : [String(appointment.service)];
+  const newServiceIds = services
+    ? (Array.isArray(services) ? services.map(String) : [String(services)])
+    : (service ? [String(service)] : null);
+
+  const servicesChanged =
+    newServiceIds !== null &&
+    (newServiceIds.length !== currentServiceIds.length ||
+      newServiceIds.some((id, idx) => id !== currentServiceIds[idx]));
+
   const scheduleChanged =
     (dentist && dentist !== String(appointment.dentist)) ||
+    servicesChanged ||
     (service && service !== String(appointment.service)) ||
     (date && date !== appointment.date) ||
     (startTime && startTime !== appointment.startTime);
@@ -157,6 +176,7 @@ const updateAppointment = asyncHandler(async (req, res) => {
     const booking = await validateBooking({
       dentistId: dentist || appointment.dentist,
       serviceId: service || appointment.service,
+      serviceIds: services || appointment.services,
       patientId: appointment.patient,
       date: date || appointment.date,
       startTime: startTime || appointment.startTime,
@@ -166,6 +186,7 @@ const updateAppointment = asyncHandler(async (req, res) => {
 
     appointment.dentist = booking.dentist._id;
     appointment.service = booking.service._id;
+    appointment.services = booking.services ? booking.services.map((s) => s._id) : [booking.service._id];
     appointment.date = date || appointment.date;
     appointment.startTime = startTime || appointment.startTime;
     appointment.endTime = booking.endTime;

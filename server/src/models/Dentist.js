@@ -12,6 +12,7 @@ const dentistSchema = new mongoose.Schema(
     email: { type: String, lowercase: true, trim: true, default: '' },
     phone: { type: String, trim: true, default: '' },
     bio: { type: String, trim: true, default: '' },
+    photo: { type: String, trim: true, default: '' },
     // 0 = Sunday ... 6 = Saturday (the clinic is closed on Sunday, so 0 is never stored)
     workingDays: {
       type: [Number],

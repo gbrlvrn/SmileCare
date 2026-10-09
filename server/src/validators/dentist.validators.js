@@ -60,9 +60,10 @@ const createDentistRules = [
   nameRule('firstName', 'First name'),
   nameRule('lastName', 'Last name'),
   specializationRule(true),
-  emailRule('email', { required: false }),
-  phoneRule(),
+  emailRule('email', { required: true }),
+  phoneRule('phone', { required: true }),
   textRule('bio', 'Bio', 1000),
+  body('photo').optional({ values: 'falsy' }).isString().withMessage('Photo must be a string'),
   ...workingDaysRules(true),
   clinicTimeRule(body('startTime'), 'Start time'),
   clinicTimeRule(body('endTime'), 'End time'),
@@ -77,6 +78,7 @@ const updateDentistRules = [
   emailRule('email', { required: false }),
   phoneRule(),
   textRule('bio', 'Bio', 1000),
+  body('photo').optional({ values: 'falsy' }).isString().withMessage('Photo must be a string'),
   ...workingDaysRules(false),
   clinicTimeRule(body('startTime'), 'Start time', { required: false }),
   clinicTimeRule(body('endTime'), 'End time', { required: false }),
@@ -86,7 +88,22 @@ const updateDentistRules = [
 
 const availabilityRules = [
   dateRule(query('date'), 'Date'),
-  mongoIdRule(query('serviceId'), 'Service'),
+  mongoIdRule(query('serviceId'), 'Service', { required: false }),
+  query('serviceIds')
+    .optional()
+    .custom((val) => {
+      const ids = Array.isArray(val) ? val : String(val).split(',').map((s) => s.trim()).filter(Boolean);
+      if (ids.length === 0 || ids.some((id) => !/^[0-9a-fA-F]{24}$/.test(id))) {
+        throw new Error('serviceIds must contain valid Mongo IDs');
+      }
+      return true;
+    }),
+  query().custom((_, { req }) => {
+    if (!req.query.serviceId && !req.query.serviceIds) {
+      throw new Error('serviceId or serviceIds is required');
+    }
+    return true;
+  }),
   mongoIdRule(query('excludeAppointmentId'), 'Appointment', { required: false }),
 ];
 

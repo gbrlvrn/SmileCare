@@ -38,7 +38,7 @@ export default function AppointmentFormModal({ show, onClose, onSaved, defaultPa
 
   const [patient, setPatient] = useState(defaultPatient);
   const [dentistId, setDentistId] = useState('');
-  const [serviceId, setServiceId] = useState('');
+  const [serviceIds, setServiceIds] = useState([]);
   const [date, setDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [reason, setReason] = useState('');
@@ -52,12 +52,22 @@ export default function AppointmentFormModal({ show, onClose, onSaved, defaultPa
   const { data: services } = useFetch(getServices, []);
 
   const selectedDentist = dentists?.find((d) => d._id === dentistId) || null;
+  const selectedServices = services?.filter((s) => serviceIds.includes(s._id)) || [];
+  const totalDuration = selectedServices.reduce((acc, s) => acc + (s.durationMinutes || 0), 0);
+  const totalPrice = selectedServices.reduce((acc, s) => acc + (s.price || 0), 0);
 
   const availability = useAvailability({
     dentistId,
-    serviceId,
+    serviceIds,
     date,
   });
+
+  const toggleService = (id) => {
+    setServiceIds((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+    setStartTime('');
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -69,8 +79,8 @@ export default function AppointmentFormModal({ show, onClose, onSaved, defaultPa
       setError('Please select a dentist.');
       return;
     }
-    if (!serviceId) {
-      setError('Please select a service.');
+    if (serviceIds.length === 0) {
+      setError('Please select at least one dental service.');
       return;
     }
     if (!date || !startTime) {
@@ -85,7 +95,8 @@ export default function AppointmentFormModal({ show, onClose, onSaved, defaultPa
       const payload = {
         patient: patient._id,
         dentist: dentistId,
-        service: serviceId,
+        service: serviceIds[0],
+        services: serviceIds,
         date,
         startTime,
         reason: reason.trim(),
@@ -128,22 +139,48 @@ export default function AppointmentFormModal({ show, onClose, onSaved, defaultPa
           <div className="row g-3 mb-3">
             <div className="col-md-6">
               <Form.Group controlId="staff-book-service">
-                <Form.Label className="fw-semibold">Dental service</Form.Label>
-                <Form.Select
-                  value={serviceId}
-                  onChange={(e) => {
-                    setServiceId(e.target.value);
-                    setStartTime('');
-                  }}
-                  required
+                <Form.Label className="fw-semibold d-flex justify-content-between align-items-center mb-1">
+                  <span>Dental service(s)</span>
+                  {serviceIds.length > 0 && (
+                    <span className="badge bg-primary-subtle text-primary border border-primary-subtle">
+                      {serviceIds.length} selected ({formatDuration(totalDuration)})
+                    </span>
+                  )}
+                </Form.Label>
+                <div
+                  className="border rounded p-2 bg-white"
+                  style={{ maxHeight: '150px', overflowY: 'auto' }}
                 >
-                  <option value="">Select a service...</option>
-                  {services?.map((svc) => (
-                    <option key={svc._id} value={svc._id}>
-                      {svc.name} — {formatDuration(svc.durationMinutes)} ({formatCurrency(svc.price)})
-                    </option>
-                  ))}
-                </Form.Select>
+                  {services?.map((svc) => {
+                    const checked = serviceIds.includes(svc._id);
+                    return (
+                      <div key={svc._id} className="form-check py-1 border-bottom">
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          id={`staff-svc-${svc._id}`}
+                          checked={checked}
+                          onChange={() => toggleService(svc._id)}
+                        />
+                        <label
+                          className="form-check-label d-flex justify-content-between align-items-center w-100"
+                          htmlFor={`staff-svc-${svc._id}`}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <span className="fw-medium small">{svc.name}</span>
+                          <span className="text-muted small">
+                            {formatDuration(svc.durationMinutes)} &bull; {formatCurrency(svc.price)}
+                          </span>
+                        </label>
+                      </div>
+                    );
+                  })}
+                </div>
+                {serviceIds.length > 0 && (
+                  <div className="small text-muted mt-1 text-end">
+                    Total: <strong className="text-primary">{formatCurrency(totalPrice)}</strong>
+                  </div>
+                )}
               </Form.Group>
             </div>
 
@@ -194,9 +231,9 @@ export default function AppointmentFormModal({ show, onClose, onSaved, defaultPa
 
             <div className="col-md-7">
               <Form.Label className="fw-semibold">Available time slot</Form.Label>
-              {!dentistId || !serviceId || !date ? (
+              {!dentistId || serviceIds.length === 0 || !date ? (
                 <div className="small text-muted p-3 border rounded bg-light">
-                  Select service, dentist, and date above to load available slots.
+                  Select service(s), dentist, and date above to load available slots.
                 </div>
               ) : (
                 <TimeSlotPicker

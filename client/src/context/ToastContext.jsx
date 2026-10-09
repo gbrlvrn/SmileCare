@@ -11,6 +11,7 @@ import { ToastContext } from './contexts';
 const ICONS = {
   success: CheckCircleFill,
   danger: XCircleFill,
+  error: XCircleFill,
   warning: ExclamationTriangleFill,
   info: InfoCircleFill,
 };
@@ -18,6 +19,7 @@ const ICONS = {
 const TITLES = {
   success: 'Success',
   danger: 'Error',
+  error: 'Error',
   warning: 'Warning',
   info: 'Notice',
 };
@@ -25,10 +27,56 @@ const TITLES = {
 let nextId = 1;
 
 /**
+ * Individual animated toast item with smooth slide-in, progress bar, and smooth exit dismissal.
+ */
+function ToastItem({ toast, onRemove }) {
+  const [isExiting, setIsExiting] = useState(false);
+
+  const handleClose = useCallback(() => {
+    if (isExiting) return;
+    setIsExiting(true);
+    setTimeout(() => {
+      onRemove(toast.id);
+    }, 280);
+  }, [isExiting, onRemove, toast.id]);
+
+  const rawType = toast.type === 'error' ? 'danger' : toast.type || 'info';
+  const Icon = ICONS[rawType] || InfoCircleFill;
+  const hasDelay = Boolean(toast.delay && toast.delay > 0);
+
+  return (
+    <Toast
+      animation={false}
+      onClose={handleClose}
+      autohide={hasDelay}
+      delay={toast.delay || 4000}
+      className={`sc-toast sc-toast-${rawType} ${isExiting ? 'is-exiting' : ''}`}
+    >
+      <Toast.Header closeLabel="Close notification">
+        <span className="sc-toast-icon-badge" aria-hidden="true">
+          <Icon />
+        </span>
+        <strong className="me-auto sc-toast-title">
+          {toast.title || TITLES[rawType] || 'Notice'}
+        </strong>
+      </Toast.Header>
+      <Toast.Body className="sc-toast-body">{toast.message}</Toast.Body>
+      {hasDelay && (
+        <div
+          className="sc-toast-progress-bar"
+          style={{ animationDuration: `${toast.delay}ms` }}
+          aria-hidden="true"
+        />
+      )}
+    </Toast>
+  );
+}
+
+/**
  * Provides `showToast({ type, message, title?, delay? })` to the whole app.
- * - type: 'success' | 'danger' | 'info' | 'warning' (default 'info')
+ * - type: 'success' | 'danger' | 'warning' | 'info' (default 'info')
  * - delay: ms before auto-hide (default 4000)
- * Toasts stack in the top-right corner.
+ * Toasts stack in the top-right corner with smooth entrance and exit animations.
  */
 export function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
@@ -49,24 +97,9 @@ export function ToastProvider({ children }) {
     <ToastContext.Provider value={value}>
       {children}
       <ToastContainer position="top-end" containerPosition="fixed" className="p-3 sc-toast-container">
-        {toasts.map((toast) => {
-          const Icon = ICONS[toast.type] || InfoCircleFill;
-          return (
-            <Toast
-              key={toast.id}
-              onClose={() => removeToast(toast.id)}
-              autohide
-              delay={toast.delay}
-              className={`sc-toast sc-toast-${toast.type}`}
-            >
-              <Toast.Header closeLabel="Close notification">
-                <Icon className={`me-2 text-${toast.type}`} aria-hidden="true" />
-                <strong className="me-auto">{toast.title || TITLES[toast.type] || 'Notice'}</strong>
-              </Toast.Header>
-              <Toast.Body>{toast.message}</Toast.Body>
-            </Toast>
-          );
-        })}
+        {toasts.map((toast) => (
+          <ToastItem key={toast.id} toast={toast} onRemove={removeToast} />
+        ))}
       </ToastContainer>
     </ToastContext.Provider>
   );

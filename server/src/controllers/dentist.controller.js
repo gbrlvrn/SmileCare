@@ -18,6 +18,7 @@ const DENTIST_FIELDS = [
   'email',
   'phone',
   'bio',
+  'photo',
   'workingDays',
   'startTime',
   'endTime',
@@ -62,16 +63,26 @@ const getDentist = asyncHandler(async (req, res) => {
 });
 
 /**
- * GET /api/dentists/:id/availability?date=YYYY-MM-DD&serviceId=...&excludeAppointmentId=...
+ * GET /api/dentists/:id/availability?date=YYYY-MM-DD&serviceId=...&serviceIds=...&excludeAppointmentId=...
  * Returns every candidate slot of the day with an `available` flag.
  */
 const getAvailability = asyncHandler(async (req, res) => {
-  const { date, serviceId } = req.query;
+  const { date, serviceId, serviceIds } = req.query;
   let { excludeAppointmentId } = req.query;
 
-  const [dentist, service] = await Promise.all([Dentist.findById(req.params.id), Service.findById(serviceId)]);
+  let ids = [];
+  if (serviceIds) {
+    ids = Array.isArray(serviceIds) ? serviceIds : String(serviceIds).split(',').map((s) => s.trim()).filter(Boolean);
+  } else if (serviceId) {
+    ids = [serviceId];
+  }
+
+  const [dentist, services] = await Promise.all([
+    Dentist.findById(req.params.id),
+    Service.find({ _id: { $in: ids } }),
+  ]);
   if (!dentist) throw ApiError.notFound('Dentist not found');
-  if (!service) throw ApiError.notFound('Service not found');
+  if (!services || services.length === 0) throw ApiError.notFound('Service not found');
 
   // A patient may only exclude (i.e. reschedule) one of their own appointments.
   if (excludeAppointmentId && req.user.role === 'patient') {
@@ -79,7 +90,15 @@ const getAvailability = asyncHandler(async (req, res) => {
     if (!own) excludeAppointmentId = undefined;
   }
 
-  const result = { date, dentistId: String(dentist._id), serviceId: String(service._id), slots: [] };
+  const totalDurationMinutes = services.reduce((sum, s) => sum + s.durationMinutes, 0);
+  const result = {
+    date,
+    dentistId: String(dentist._id),
+    serviceId: String(services[0]._id),
+    serviceIds: services.map((s) => String(s._id)),
+    durationMinutes: totalDurationMinutes,
+    slots: [],
+  };
   const day = dayOfWeek(date);
 
   let message;
@@ -92,7 +111,7 @@ const getAvailability = asyncHandler(async (req, res) => {
   const bookedRanges = await getBookedRanges({ field: 'dentist', id: dentist._id, date, excludeId: excludeAppointmentId });
   result.slots = generateSlots({
     dentist,
-    durationMinutes: service.durationMinutes,
+    durationMinutes: totalDurationMinutes,
     date,
     bookedRanges,
     now: clinicNow(),

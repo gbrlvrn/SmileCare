@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Button, Col, Container, Row } from 'react-bootstrap';
 import {
   ArrowRight,
@@ -18,6 +19,8 @@ import { Link } from 'react-router-dom';
 import { getDentists } from '../../api/dentistApi';
 import { getServices } from '../../api/serviceApi';
 import heroImage from '../../assets/hero.jpg';
+import useAuth from '../../hooks/useAuth';
+import useAuthModal from '../../hooks/useAuthModal';
 import useDocumentTitle from '../../hooks/useDocumentTitle';
 import useFetch from '../../hooks/useFetch';
 import {
@@ -27,6 +30,7 @@ import {
   formatWorkingDays,
   initials,
 } from '../../utils/formatters';
+import { getDentistPortrait } from '../../utils/dentistImages';
 
 /** Shown when the API is unreachable so the landing page never looks empty. */
 const FALLBACK_SERVICES = [
@@ -73,7 +77,7 @@ function serviceIcon(name = '') {
 /** Section heading used by every landing section. */
 function SectionHeading({ eyebrow, title, text }) {
   return (
-    <div className="sc-section-heading">
+    <div className="sc-section-heading sc-reveal">
       <span className="sc-eyebrow">{eyebrow}</span>
       <h2 className="sc-section-title">{title}</h2>
       {text && <p className="sc-section-text">{text}</p>}
@@ -84,6 +88,8 @@ function SectionHeading({ eyebrow, title, text }) {
 /** Public home page. */
 export default function Landing() {
   useDocumentTitle('');
+  const { isAuthenticated } = useAuth();
+  const { openLogin, openRegister } = useAuthModal();
 
   const servicesQuery = useFetch(() => getServices(), []);
   const dentistsQuery = useFetch(() => getDentists(), []);
@@ -98,8 +104,37 @@ export default function Landing() {
       ? dentistsQuery.data.slice(0, 4)
       : FALLBACK_DENTISTS;
 
+  useEffect(() => {
+    const elements = document.querySelectorAll('.sc-reveal');
+    if (!elements.length) return;
+
+    if (!('IntersectionObserver' in window)) {
+      elements.forEach((el) => el.classList.add('sc-revealed'));
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('sc-revealed');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      {
+        threshold: 0.1,
+        rootMargin: '0px 0px -40px 0px',
+      }
+    );
+
+    elements.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, [services, dentists]);
+
   return (
-    <>
+    <div className="sc-landing-enter">
       {/* ---------- Hero ---------- */}
       <section className="sc-hero" id="top">
         <Container>
@@ -116,9 +151,19 @@ export default function Landing() {
                 time to understand you. Book your visit online in under a minute.
               </p>
               <div className="d-flex flex-wrap gap-3">
-                <Button as={Link} to="/patient/book" size="lg">
-                  Book an appointment <ArrowRight aria-hidden="true" className="ms-1" />
-                </Button>
+                {isAuthenticated ? (
+                  <Button as={Link} to="/patient/book" size="lg">
+                    Book an appointment <ArrowRight aria-hidden="true" className="ms-1" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="button"
+                    size="lg"
+                    onClick={() => openLogin({ redirectPath: '/patient/book' })}
+                  >
+                    Book an appointment <ArrowRight aria-hidden="true" className="ms-1" />
+                  </Button>
+                )}
                 <Button href="#services" size="lg" variant="outline-primary">
                   Explore services
                 </Button>
@@ -162,7 +207,7 @@ export default function Landing() {
       </section>
 
       {/* ---------- Stats strip ---------- */}
-      <section className="sc-stats-strip" aria-label="SmileCare in numbers">
+      <section className="sc-stats-strip sc-reveal" aria-label="SmileCare in numbers">
         <Container>
           <Row className="g-4 text-center">
             {STATS.map((stat) => (
@@ -184,10 +229,10 @@ export default function Landing() {
             text="Preventive, restorative and cosmetic treatments — all under one roof, with transparent pricing."
           />
           <Row xs={1} md={2} lg={3} className="g-4" aria-busy={servicesQuery.loading}>
-            {services.map((service) => {
+            {services.map((service, index) => {
               const Icon = serviceIcon(service.name);
               return (
-                <Col key={service._id}>
+                <Col key={service._id} className={`sc-reveal sc-reveal-delay-${(index % 3) + 1}`}>
                   <article className="sc-card sc-service-card h-100">
                     <div className="sc-service-icon" aria-hidden="true">
                       <Icon size={24} />
@@ -219,14 +264,16 @@ export default function Landing() {
             text="Experienced, gentle and always happy to answer your questions."
           />
           <Row xs={1} sm={2} lg={4} className="g-4" aria-busy={dentistsQuery.loading}>
-            {dentists.map((dentist) => {
+            {dentists.map((dentist, index) => {
               const name = dentist.fullName || `Dr. ${dentist.firstName} ${dentist.lastName}`;
               return (
-                <Col key={dentist._id}>
+                <Col key={dentist._id} className={`sc-reveal sc-reveal-delay-${(index % 4) + 1}`}>
                   <article className="sc-card sc-dentist-card h-100">
-                    <div className="sc-dentist-avatar" aria-hidden="true">
-                      {initials(name)}
-                    </div>
+                    <img
+                      src={getDentistPortrait(dentist)}
+                      alt={name}
+                      className="sc-dentist-avatar object-fit-cover shadow-sm p-0"
+                    />
                     <h3 className="h6 fw-semibold mb-1">{name}</h3>
                     <p className="text-primary small fw-medium mb-3">{dentist.specialization}</p>
                     <ul className="sc-meta-list justify-content-center">
@@ -257,7 +304,7 @@ export default function Landing() {
           />
           <Row xs={1} md={3} className="g-4">
             {STEPS.map(({ icon: Icon, title, text }, index) => (
-              <Col key={title}>
+              <Col key={title} className={`sc-reveal sc-reveal-delay-${index + 1}`}>
                 <div className="sc-card sc-step-card h-100">
                   <span className="sc-step-number" aria-hidden="true">
                     {index + 1}
@@ -280,7 +327,7 @@ export default function Landing() {
       {/* ---------- CTA banner ---------- */}
       <section className="pb-5">
         <Container>
-          <div className="sc-cta-banner">
+          <div className="sc-cta-banner sc-reveal">
             <div>
               <h2 className="h3 fw-bold mb-2">Ready for a brighter, healthier smile?</h2>
               <p className="mb-0 opacity-75">
@@ -288,16 +335,35 @@ export default function Landing() {
               </p>
             </div>
             <div className="d-flex flex-wrap gap-2">
-              <Button as={Link} to="/patient/book" variant="light" size="lg" className="text-primary fw-semibold">
-                Book Appointment
-              </Button>
-              <Button as={Link} to="/register" variant="outline-light" size="lg">
-                Create account
-              </Button>
+              {isAuthenticated ? (
+                <Button as={Link} to="/patient/book" variant="light" size="lg" className="text-primary fw-semibold">
+                  Book Appointment
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    variant="light"
+                    size="lg"
+                    className="text-primary fw-semibold"
+                    onClick={() => openLogin({ redirectPath: '/patient/book' })}
+                  >
+                    Book Appointment
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline-light"
+                    size="lg"
+                    onClick={() => openRegister()}
+                  >
+                    Create account
+                  </Button>
+                </>
+              )}
             </div>
           </div>
         </Container>
       </section>
-    </>
+    </div>
   );
 }

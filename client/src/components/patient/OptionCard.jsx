@@ -16,21 +16,30 @@ import './patient.css';
  * @param {React.ReactNode} [props.children] description / extra content
  * @param {React.ReactNode} [props.footer] bottom row (e.g. duration + price)
  */
-export default function OptionCard({ name, value, checked, onChange, title, children, footer }) {
+export default function OptionCard({
+  name,
+  value,
+  checked,
+  onChange,
+  title,
+  children,
+  footer,
+  type = 'radio',
+}) {
   const inputId = `${name}-${value}`;
   return (
     <label htmlFor={inputId} className={`sc-option-card ${checked ? 'is-selected' : ''}`}>
       <input
         id={inputId}
-        type="radio"
+        type={type}
         className="sc-option-input visually-hidden"
         name={name}
         value={value}
         checked={checked}
         onChange={() => onChange(value)}
       />
-      <span className="sc-option-check" aria-hidden="true">
-        {checked && <CheckLg size={12} />}
+      <span className={`sc-option-check ${type === 'checkbox' ? 'sc-option-check-checkbox' : ''}`} aria-hidden="true">
+        {checked && <CheckLg size={13} strokeWidth={1} />}
       </span>
       <span className="sc-option-title">{title}</span>
       {children}

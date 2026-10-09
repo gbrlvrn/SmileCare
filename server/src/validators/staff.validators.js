@@ -21,6 +21,7 @@ const createStaffRules = [
 const updateStaffRules = [
   nameRule('firstName', 'First name', { required: false }),
   nameRule('lastName', 'Last name', { required: false }),
+  emailRule('email', { required: false }),
   phoneRule(),
   booleanRule('isActive', 'isActive'),
   passwordRule('password', 'Password', { required: false }),

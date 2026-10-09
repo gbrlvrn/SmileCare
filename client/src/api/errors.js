@@ -16,6 +16,7 @@ export function getErrorMessage(err, fallback = 'Something went wrong. Please tr
   const serverMessage = err.response?.data?.message;
   if (serverMessage) return serverMessage;
 
+  if (err.response?.status === 423) return 'Account is temporarily locked. Please wait before trying again.';
   if (err.response?.status === 429) return 'Too many requests. Please wait a moment and try again.';
   if (err.code === 'ECONNABORTED') return 'The request timed out. Please try again.';
   // No response at all → network error / server offline

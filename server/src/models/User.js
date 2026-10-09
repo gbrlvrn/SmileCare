@@ -32,6 +32,9 @@ const userSchema = new mongoose.Schema(
     address: { type: String, trim: true, default: '' },
     medicalNotes: { type: String, trim: true, default: '' }, // patients only
     isActive: { type: Boolean, default: true },
+    failedLoginAttempts: { type: Number, default: 0 },
+    lockUntil: { type: Date, default: null },
+    lastFailedLogin: { type: Date, default: null },
   },
   {
     timestamps: true,
@@ -41,6 +44,9 @@ const userSchema = new mongoose.Schema(
       versionKey: false,
       transform: (doc, ret) => {
         delete ret.password; // defence in depth: never serialise the hash
+        delete ret.failedLoginAttempts;
+        delete ret.lockUntil;
+        delete ret.lastFailedLogin;
         return ret;
       },
     },
@@ -49,6 +55,10 @@ const userSchema = new mongoose.Schema(
 
 userSchema.virtual('fullName').get(function fullName() {
   return `${this.firstName} ${this.lastName}`;
+});
+
+userSchema.virtual('isLocked').get(function isLocked() {
+  return Boolean(this.lockUntil && this.lockUntil.getTime() > Date.now());
 });
 
 userSchema.index({ role: 1, createdAt: -1 });

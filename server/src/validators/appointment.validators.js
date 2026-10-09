@@ -29,7 +29,24 @@ const createAppointmentRules = [
     .withMessage('Patient is required'),
   mongoIdRule(body('patient'), 'Patient', { required: false }),
   mongoIdRule(body('dentist'), 'Dentist'),
-  mongoIdRule(body('service'), 'Service'),
+  mongoIdRule(body('service'), 'Service', { required: false }),
+  body('services')
+    .optional()
+    .isArray({ min: 1 })
+    .withMessage('Services must be an array with at least one service'),
+  body('services.*')
+    .optional()
+    .isMongoId()
+    .withMessage('Each service must be a valid ID'),
+  body()
+    .custom((_, { req }) => {
+      const hasService = Boolean(req.body.service);
+      const hasServices = Array.isArray(req.body.services) && req.body.services.length > 0;
+      if (!hasService && !hasServices) {
+        throw new Error('At least one service is required');
+      }
+      return true;
+    }),
   dateRule(body('date'), 'Date'),
   startTimeRule(true),
   textRule('reason', 'Reason', 500),
@@ -42,6 +59,14 @@ const createAppointmentRules = [
 const updateAppointmentRules = [
   mongoIdRule(body('dentist'), 'Dentist', { required: false }),
   mongoIdRule(body('service'), 'Service', { required: false }),
+  body('services')
+    .optional()
+    .isArray({ min: 1 })
+    .withMessage('Services must be an array with at least one service'),
+  body('services.*')
+    .optional()
+    .isMongoId()
+    .withMessage('Each service must be a valid ID'),
   dateRule(body('date'), 'Date', { required: false }),
   startTimeRule(false),
   textRule('reason', 'Reason', 500),

@@ -53,7 +53,13 @@ const updateStaff = asyncHandler(async (req, res) => {
   }
 
   const staff = await findStaff(req.params.id);
-  Object.assign(staff, pick(req.body, ['firstName', 'lastName', 'phone', 'isActive', 'password']));
+  const updates = pick(req.body, ['firstName', 'lastName', 'email', 'phone', 'isActive', 'password']);
+
+  if (updates.email && updates.email !== staff.email && (await User.exists({ email: updates.email }))) {
+    throw ApiError.conflict('Email is already registered');
+  }
+
+  Object.assign(staff, updates);
   await staff.save();
 
   sendSuccess(res, staff, { message: 'Staff account updated successfully' });

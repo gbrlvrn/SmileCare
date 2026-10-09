@@ -4,7 +4,7 @@ import { PencilSquare, PlusCircle, Scissors, Trash } from 'react-bootstrap-icons
 import { createService, deleteService, getServices, updateService } from '../../api/serviceApi';
 import EmptyState from '../../components/EmptyState';
 import FormInput from '../../components/FormInput';
-import Loader from '../../components/Loader';
+import TableSkeleton from '../../components/skeletons/TableSkeleton';
 import PageHeader from '../../components/PageHeader';
 import Pagination from '../../components/Pagination';
 import SearchBar from '../../components/SearchBar';
@@ -13,7 +13,7 @@ import { validateServiceForm } from '../../components/staff/staffValidators';
 import useDeleteAction from '../../components/staff/useDeleteAction';
 import useListQuery from '../../hooks/useListQuery';
 import useToast from '../../hooks/useToast';
-import { SERVICE_DURATIONS } from '../../utils/constants';
+import { DENTAL_SERVICE_NAMES, SERVICE_DURATIONS, STANDARD_SERVICES } from '../../utils/constants';
 import { formatCurrency, formatDuration } from '../../utils/formatters';
 
 const INITIAL_FORM = {
@@ -49,6 +49,8 @@ export default function StaffServices() {
   const [formErrors, setFormErrors] = useState({});
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [serverError, setServerError] = useState('');
+  const [isCustomServiceName, setIsCustomServiceName] = useState(false);
+  const [customServiceNameText, setCustomServiceNameText] = useState('');
 
   const deleteAction = useDeleteAction({
     deleteFn: (s) => deleteService(s._id),
@@ -60,6 +62,8 @@ export default function StaffServices() {
     setModalMode('add');
     setTargetService(null);
     setFormValues(INITIAL_FORM);
+    setIsCustomServiceName(false);
+    setCustomServiceNameText('');
     setFormErrors({});
     setServerError('');
   };
@@ -67,6 +71,9 @@ export default function StaffServices() {
   const openEditModal = (s) => {
     setModalMode('edit');
     setTargetService(s);
+    const isStandard = DENTAL_SERVICE_NAMES.includes(s.name);
+    setIsCustomServiceName(!isStandard && Boolean(s.name));
+    setCustomServiceNameText(!isStandard ? (s.name || '') : '');
     setFormValues({
       name: s.name || '',
       description: s.description || '',
@@ -81,6 +88,8 @@ export default function StaffServices() {
   const closeModal = () => {
     setModalMode(null);
     setTargetService(null);
+    setIsCustomServiceName(false);
+    setCustomServiceNameText('');
   };
 
   const handleFieldChange = (name, value) => {
@@ -90,10 +99,43 @@ export default function StaffServices() {
     }
   };
 
+  const handleServiceNameSelect = (e) => {
+    const selected = e.target.value;
+    if (selected === 'OTHER') {
+      setIsCustomServiceName(true);
+      handleFieldChange('name', customServiceNameText);
+    } else {
+      setIsCustomServiceName(false);
+      const standardDef = STANDARD_SERVICES.find((s) => s.name === selected);
+      setFormValues((prev) => ({
+        ...prev,
+        name: selected,
+        // If adding a new service or fields are empty, prefill with standard recommendations
+        description: modalMode === 'add' || !prev.description ? (standardDef?.description || prev.description) : prev.description,
+        durationMinutes: modalMode === 'add' || !prev.durationMinutes ? (standardDef?.durationMinutes || 30) : prev.durationMinutes,
+        price: modalMode === 'add' || !prev.price ? (standardDef ? String(standardDef.price) : prev.price) : prev.price,
+      }));
+      if (formErrors.name) {
+        setFormErrors((prev) => ({ ...prev, name: '' }));
+      }
+    }
+  };
+
+  const handleCustomServiceNameChange = (e) => {
+    const val = e.target.value;
+    setCustomServiceNameText(val);
+    handleFieldChange('name', val);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const isEdit = modalMode === 'edit';
-    const clientErrors = validateServiceForm(formValues);
+    const payloadValues = {
+      ...formValues,
+      name: formValues.name.trim(),
+      description: formValues.description.trim(),
+    };
+    const clientErrors = validateServiceForm(payloadValues);
 
     if (Object.keys(clientErrors).length > 0) {
       setFormErrors(clientErrors);
@@ -105,9 +147,9 @@ export default function StaffServices() {
 
     try {
       const payload = {
-        ...formValues,
-        durationMinutes: Number(formValues.durationMinutes),
-        price: Number(formValues.price),
+        ...payloadValues,
+        durationMinutes: Number(payloadValues.durationMinutes),
+        price: Number(payloadValues.price),
       };
 
       if (isEdit) {
@@ -183,7 +225,7 @@ export default function StaffServices() {
 
       {/* Services Table */}
       {loading && services.length === 0 ? (
-        <Loader label="Loading services..." className="my-5" />
+        <TableSkeleton columns={5} rows={6} />
       ) : error ? (
         <div className="alert alert-danger d-flex justify-content-between align-items-center">
           <div>{error}</div>
@@ -280,15 +322,60 @@ export default function StaffServices() {
           <Modal.Body className="p-4">
             {serverError && <Alert variant="danger">{serverError}</Alert>}
 
-            <FormInput
-              label="Service name"
-              name="name"
-              value={formValues.name}
-              onChange={(e) => handleFieldChange('name', e.target.value)}
-              error={formErrors.name}
-              required
-              placeholder="e.g. Tooth Whitening, Fluoride Application"
-            />
+            {/* Service Name Dropdown with "Other" option */}
+            <Form.Group controlId="service-name-select" className="mb-3">
+              <Form.Label className="fw-semibold">
+                Service name
+                <span className="text-danger ms-1" aria-hidden="true">
+                  *
+                </span>
+              </Form.Label>
+              <Form.Select
+                value={isCustomServiceName ? 'OTHER' : formValues.name}
+                onChange={handleServiceNameSelect}
+                isInvalid={!isCustomServiceName && Boolean(formErrors.name)}
+              >
+                <option value="" disabled>
+                  Select a dental service...
+                </option>
+                {DENTAL_SERVICE_NAMES.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+                <option value="OTHER">Other (specify custom procedure)...</option>
+              </Form.Select>
+              {!isCustomServiceName && formErrors.name && (
+                <Form.Control.Feedback type="invalid">
+                  {formErrors.name}
+                </Form.Control.Feedback>
+              )}
+            </Form.Group>
+
+            {isCustomServiceName && (
+              <Form.Group controlId="service-custom-name" className="mb-3">
+                <Form.Label className="small fw-semibold text-muted">
+                  Specify custom service name
+                  <span className="text-danger ms-1" aria-hidden="true">
+                    *
+                  </span>
+                </Form.Label>
+                <Form.Control
+                  type="text"
+                  placeholder="e.g. Night Guard Fitting, Laser Gum Therapy"
+                  value={customServiceNameText}
+                  onChange={handleCustomServiceNameChange}
+                  isInvalid={Boolean(formErrors.name)}
+                  maxLength={100}
+                  autoFocus
+                />
+                {formErrors.name && (
+                  <Form.Control.Feedback type="invalid">
+                    {formErrors.name}
+                  </Form.Control.Feedback>
+                )}
+              </Form.Group>
+            )}
 
             <FormInput
               label="Description (optional)"

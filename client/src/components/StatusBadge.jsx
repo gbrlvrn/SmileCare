@@ -13,8 +13,9 @@ import { APPOINTMENT_STATUSES } from '../utils/constants';
 export default function StatusBadge({ status, label, variant, className = '' }) {
   const config = APPOINTMENT_STATUSES[status] || { label: status || 'Unknown', variant: 'secondary' };
   const color = variant || config.variant;
+  const statusClass = status ? `sc-badge-status-${status}` : '';
   return (
-    <span className={`badge rounded-pill sc-badge sc-badge-${color} ${className}`}>
+    <span className={`badge rounded-pill sc-badge sc-badge-${color} ${statusClass} ${className}`.trim()}>
       <span className="sc-badge-dot" aria-hidden="true" />
       {label || config.label}
     </span>

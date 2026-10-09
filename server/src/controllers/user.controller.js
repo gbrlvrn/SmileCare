@@ -27,6 +27,9 @@ const changePassword = asyncHandler(async (req, res) => {
   }
 
   user.password = newPassword; // hashed by the pre-save hook
+  user.failedLoginAttempts = 0;
+  user.lockUntil = null;
+  user.lastFailedLogin = null;
   await user.save();
 
   sendSuccess(res, null, { message: 'Password changed successfully' });

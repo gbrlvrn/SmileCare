@@ -13,6 +13,7 @@ import {
   validateName,
   validateOptionalBirthDate,
   validateOptionalPhone,
+  validatePhMobile,
 } from '../../utils/validators';
 import { SERVICE_DURATIONS } from '../../utils/constants';
 
@@ -48,16 +49,16 @@ export function validatePatientForm(values, { isEdit = false } = {}) {
 }
 
 /**
- * Add / edit staff account form (email can only be set when creating).
+ * Add / edit staff account form.
  * @param {object} values
  * @param {{ isEdit?: boolean }} [options]
  */
 export function validateStaffForm(values, { isEdit = false } = {}) {
   return clean({
-    firstName: validateName(values.firstName, 'First name'),
-    lastName: validateName(values.lastName, 'Last name'),
-    email: isEdit ? '' : emailRule(values.email),
-    phone: validateOptionalPhone(values.phone),
+    firstName: validateName(values.firstName, 'First name', 30),
+    lastName: validateName(values.lastName, 'Last name', 30),
+    email: emailRule(values.email),
+    phone: validateOptionalPhone(values.phone, 'Phone number'),
     password: passwordRule(values.password, isEdit),
   });
 }
@@ -74,11 +75,11 @@ export function validateDentistForm(values) {
   }
 
   return clean({
-    firstName: validateName(values.firstName, 'First name'),
-    lastName: validateName(values.lastName, 'Last name'),
+    firstName: validateName(values.firstName, 'First name', 30),
+    lastName: validateName(values.lastName, 'Last name', 30),
     specialization,
-    email: required(values.email) ? emailRule(values.email) : '',
-    phone: validateOptionalPhone(values.phone),
+    email: validateEmail(values.email),
+    phone: validatePhMobile(values.phone, { required: true, label: 'Phone number' }),
     bio: maxText(values.bio, 1000, 'Bio'),
     workingDays: values.workingDays.length === 0 ? 'Select at least one working day' : '',
     startTime: required(values.startTime) ? '' : 'Start time is required',

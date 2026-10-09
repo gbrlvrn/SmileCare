@@ -4,7 +4,7 @@ import { PencilSquare, PersonPlus, ShieldLock, Trash } from 'react-bootstrap-ico
 import { createStaff, deleteStaff, getStaff, updateStaff } from '../../api/staffApi';
 import EmptyState from '../../components/EmptyState';
 import FormInput from '../../components/FormInput';
-import Loader from '../../components/Loader';
+import TableSkeleton from '../../components/skeletons/TableSkeleton';
 import PageHeader from '../../components/PageHeader';
 import Pagination from '../../components/Pagination';
 import PasswordChecklist from '../../components/PasswordChecklist';
@@ -17,6 +17,12 @@ import useAuth from '../../hooks/useAuth';
 import useListQuery from '../../hooks/useListQuery';
 import useToast from '../../hooks/useToast';
 import { formatDate, fullName, initials } from '../../utils/formatters';
+import {
+  passwordPolicy,
+  validateEmail,
+  validateName,
+  validateOptionalPhone,
+} from '../../utils/validators';
 
 const INITIAL_FORM = {
   firstName: '',
@@ -92,10 +98,98 @@ export default function StaffAccounts() {
     }
   };
 
+  const handleFirstNameChange = (e) => {
+    const lettersOnly = e.target.value.replace(/[^a-zA-ZÀ-ÿ\s]/g, '').slice(0, 30);
+    handleFieldChange('firstName', lettersOnly);
+    if (formErrors.firstName) {
+      setFormErrors((prev) => ({ ...prev, firstName: validateName(lettersOnly, 'First name', 30) }));
+    }
+  };
+
+  const handleFirstNameBlur = () => {
+    setFormErrors((prev) => ({
+      ...prev,
+      firstName: validateName(formValues.firstName, 'First name', 30),
+    }));
+  };
+
+  const handleLastNameChange = (e) => {
+    const lettersOnly = e.target.value.replace(/[^a-zA-ZÀ-ÿ\s]/g, '').slice(0, 30);
+    handleFieldChange('lastName', lettersOnly);
+    if (formErrors.lastName) {
+      setFormErrors((prev) => ({ ...prev, lastName: validateName(lettersOnly, 'Last name', 30) }));
+    }
+  };
+
+  const handleLastNameBlur = () => {
+    setFormErrors((prev) => ({
+      ...prev,
+      lastName: validateName(formValues.lastName, 'Last name', 30),
+    }));
+  };
+
+  const handleEmailChange = (e) => {
+    const val = e.target.value;
+    handleFieldChange('email', val);
+    if (formErrors.email) {
+      setFormErrors((prev) => ({ ...prev, email: validateEmail(val) }));
+    }
+  };
+
+  const handleEmailBlur = () => {
+    setFormErrors((prev) => ({
+      ...prev,
+      email: validateEmail(formValues.email),
+    }));
+  };
+
+  const handlePhoneChange = (e) => {
+    const digitsOnly = e.target.value.replace(/\D/g, '').slice(0, 11);
+    handleFieldChange('phone', digitsOnly);
+    if (formErrors.phone) {
+      setFormErrors((prev) => ({
+        ...prev,
+        phone: validateOptionalPhone(digitsOnly, 'Phone number'),
+      }));
+    }
+  };
+
+  const handlePhoneBlur = () => {
+    setFormErrors((prev) => ({
+      ...prev,
+      phone: validateOptionalPhone(formValues.phone, 'Phone number'),
+    }));
+  };
+
+  const handlePasswordChange = (e) => {
+    const val = e.target.value;
+    handleFieldChange('password', val);
+    if (formErrors.password) {
+      setFormErrors((prev) => ({
+        ...prev,
+        password: modalMode === 'edit' && !val ? '' : passwordPolicy(val),
+      }));
+    }
+  };
+
+  const handlePasswordBlur = () => {
+    setFormErrors((prev) => ({
+      ...prev,
+      password: modalMode === 'edit' && !formValues.password ? '' : passwordPolicy(formValues.password),
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     const isEdit = modalMode === 'edit';
-    const clientErrors = validateStaffForm(formValues, { isEdit });
+    const payloadValues = {
+      ...formValues,
+      firstName: formValues.firstName.trim(),
+      lastName: formValues.lastName.trim(),
+      email: formValues.email.trim(),
+      phone: formValues.phone.trim(),
+    };
+    const clientErrors = validateStaffForm(payloadValues, { isEdit });
 
     if (Object.keys(clientErrors).length > 0) {
       setFormErrors(clientErrors);
@@ -106,7 +200,7 @@ export default function StaffAccounts() {
     setServerError('');
 
     try {
-      const payload = { ...formValues };
+      const payload = { ...payloadValues };
       if (isEdit && !payload.password) {
         delete payload.password;
       }
@@ -128,6 +222,8 @@ export default function StaffAccounts() {
           backendErrors[e.field] = e.message;
         });
         setFormErrors(backendErrors);
+      } else if (err.response?.data?.message?.toLowerCase().includes('email')) {
+        setFormErrors((prev) => ({ ...prev, email: err.response.data.message }));
       } else {
         setServerError(err.response?.data?.message || 'Failed to save staff account.');
       }
@@ -164,7 +260,7 @@ export default function StaffAccounts() {
 
       {/* Staff Table */}
       {loading && staffMembers.length === 0 ? (
-        <Loader label="Loading staff accounts..." className="my-5" />
+        <TableSkeleton columns={5} rows={6} hasAvatar={true} />
       ) : error ? (
         <div className="alert alert-danger d-flex justify-content-between align-items-center">
           <div>{error}</div>
@@ -280,9 +376,12 @@ export default function StaffAccounts() {
                   label="First name"
                   name="firstName"
                   value={formValues.firstName}
-                  onChange={(e) => handleFieldChange('firstName', e.target.value)}
+                  onChange={handleFirstNameChange}
+                  onBlur={handleFirstNameBlur}
                   error={formErrors.firstName}
+                  maxLength={30}
                   required
+                  placeholder="e.g. Maria"
                 />
               </Col>
               <Col md={6}>
@@ -290,9 +389,12 @@ export default function StaffAccounts() {
                   label="Last name"
                   name="lastName"
                   value={formValues.lastName}
-                  onChange={(e) => handleFieldChange('lastName', e.target.value)}
+                  onChange={handleLastNameChange}
+                  onBlur={handleLastNameBlur}
                   error={formErrors.lastName}
+                  maxLength={30}
                   required
+                  placeholder="e.g. Santos"
                 />
               </Col>
             </Row>
@@ -304,10 +406,12 @@ export default function StaffAccounts() {
                   name="email"
                   type="email"
                   value={formValues.email}
-                  onChange={(e) => handleFieldChange('email', e.target.value)}
+                  onChange={handleEmailChange}
+                  onBlur={handleEmailBlur}
                   error={formErrors.email}
+                  maxLength={100}
                   required
-                  disabled={modalMode === 'edit'}
+                  placeholder="e.g. staff.maria@smilecare.com"
                 />
               </Col>
               <Col md={6}>
@@ -315,9 +419,12 @@ export default function StaffAccounts() {
                   label="Phone number (optional)"
                   name="phone"
                   value={formValues.phone}
-                  onChange={(e) => handleFieldChange('phone', e.target.value)}
+                  onChange={handlePhoneChange}
+                  onBlur={handlePhoneBlur}
                   error={formErrors.phone}
+                  maxLength={11}
                   placeholder="e.g. 09171234567"
+                  helpText="Philippine mobile format (starts with 09, 11 digits)"
                 />
               </Col>
             </Row>
@@ -327,9 +434,11 @@ export default function StaffAccounts() {
                 label={modalMode === 'edit' ? 'Reset password (leave blank to keep current)' : 'Password'}
                 name="password"
                 value={formValues.password}
-                onChange={(e) => handleFieldChange('password', e.target.value)}
+                onChange={handlePasswordChange}
+                onBlur={handlePasswordBlur}
                 error={formErrors.password}
                 required={modalMode === 'add'}
+                placeholder={modalMode === 'edit' ? 'Enter new password to reset...' : 'Create a strong password'}
               />
               {formValues.password && <PasswordChecklist password={formValues.password} />}
             </div>

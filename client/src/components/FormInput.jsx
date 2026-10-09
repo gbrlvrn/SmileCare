@@ -1,4 +1,4 @@
-import { Form } from 'react-bootstrap';
+import { Form, InputGroup } from 'react-bootstrap';
 
 /**
  * Labelled form field with inline validation message. Works with useForm:
@@ -8,6 +8,9 @@ import { Form } from 'react-bootstrap';
  * @param {string} [props.label]
  * @param {string} props.name input name (also used to build the id)
  * @param {string} [props.error] validation message; when set the field is red + aria-invalid
+ * @param {boolean} [props.isValid] when true turns green
+ * @param {boolean} [props.isInvalid] when true turns red
+ * @param {React.ReactNode} [props.prefix] optional prefix (e.g. "+63")
  * @param {'input'|'select'|'textarea'} [props.as='input']
  * @param {{ value: string|number, label: string }[]} [props.options] for as="select" (or pass <option> children)
  * @param {string} [props.placeholder] for selects this becomes the first empty option
@@ -22,6 +25,9 @@ export default function FormInput({
   label,
   name,
   error,
+  isValid,
+  isInvalid,
+  prefix,
   as = 'input',
   options,
   children,
@@ -42,10 +48,14 @@ export default function FormInput({
       .filter(Boolean)
       .join(' ') || undefined;
 
+  const resolvedIsInvalid = isInvalid !== undefined ? isInvalid : Boolean(error);
+  const resolvedIsValid = isValid !== undefined ? isValid : (!resolvedIsInvalid && Boolean(rest.value));
+
   const commonProps = {
     name,
-    isInvalid: Boolean(error),
-    'aria-invalid': error ? true : undefined,
+    isInvalid: resolvedIsInvalid,
+    isValid: resolvedIsValid,
+    'aria-invalid': resolvedIsInvalid ? true : undefined,
     'aria-required': required || undefined,
     'aria-describedby': describedBy,
     ...rest,
@@ -66,23 +76,45 @@ export default function FormInput({
         </Form.Label>
       )}
 
-      {as === 'select' ? (
-        <Form.Select {...commonProps}>
-          {placeholder !== undefined && <option value="">{placeholder}</option>}
-          {options
-            ? options.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))
-            : children}
-        </Form.Select>
+      {prefix ? (
+        <InputGroup hasValidation className="sc-phone-input-group">
+          <InputGroup.Text className="sc-phone-prefix">{prefix}</InputGroup.Text>
+          <Form.Control
+            as={as === 'textarea' ? 'textarea' : undefined}
+            placeholder={placeholder}
+            {...commonProps}
+          />
+          <Form.Control.Feedback type="invalid" id={feedbackId}>
+            {error}
+          </Form.Control.Feedback>
+        </InputGroup>
+      ) : as === 'select' ? (
+        <>
+          <Form.Select {...commonProps}>
+            {placeholder !== undefined && <option value="">{placeholder}</option>}
+            {options
+              ? options.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))
+              : children}
+          </Form.Select>
+          <Form.Control.Feedback type="invalid" id={feedbackId}>
+            {error}
+          </Form.Control.Feedback>
+        </>
       ) : (
-        <Form.Control
-          as={as === 'textarea' ? 'textarea' : undefined}
-          placeholder={placeholder}
-          {...commonProps}
-        />
+        <>
+          <Form.Control
+            as={as === 'textarea' ? 'textarea' : undefined}
+            placeholder={placeholder}
+            {...commonProps}
+          />
+          <Form.Control.Feedback type="invalid" id={feedbackId}>
+            {error}
+          </Form.Control.Feedback>
+        </>
       )}
 
       {(helpText && !error) || (showCount && rest.maxLength) ? (
@@ -101,10 +133,6 @@ export default function FormInput({
           )}
         </div>
       ) : null}
-
-      <Form.Control.Feedback type="invalid" id={feedbackId}>
-        {error}
-      </Form.Control.Feedback>
     </Form.Group>
   );
 }

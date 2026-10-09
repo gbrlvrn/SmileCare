@@ -5,7 +5,7 @@
  *   { email: 'Enter a valid email' }     → show this message under the email field
  * The server validates everything again; this only gives faster feedback.
  */
-import { todayISO } from './formatters';
+import { todayISO } from './formatters.js';
 
 // ---------- Basic predicates (return true when the value is OK) ----------
 
@@ -36,17 +36,41 @@ export const isPastDate = (iso) => /^\d{4}-\d{2}-\d{2}$/.test(iso || '') && iso 
 
 // ---------- Password policy ----------
 
-/** Rules shown in the live password checklist (8–64 chars, upper, lower, digit). */
+/** Rules shown in the live password checklist (min 8 chars, lowercase, uppercase, number, symbol). */
 export const PASSWORD_RULES = [
-  { id: 'length', label: '8–64 characters', test: (pw) => pw.length >= 8 && pw.length <= 64 },
-  { id: 'upper', label: 'One uppercase letter', test: (pw) => /[A-Z]/.test(pw) },
-  { id: 'lower', label: 'One lowercase letter', test: (pw) => /[a-z]/.test(pw) },
-  { id: 'digit', label: 'One number', test: (pw) => /\d/.test(pw) },
+  { id: 'length', label: 'Minimum of 8 characters', test: (pw) => pw.length >= 8 && pw.length <= 64 },
+  { id: 'lower', label: 'At least one lowercase letter', test: (pw) => /[a-z]/.test(pw) },
+  { id: 'upper', label: 'At least one uppercase letter', test: (pw) => /[A-Z]/.test(pw) },
+  { id: 'digit', label: 'At least one number', test: (pw) => /\d/.test(pw) },
+  { id: 'symbol', label: 'At least one symbol', test: (pw) => /[^A-Za-z0-9]/.test(pw) },
 ];
 
-/** Returns [{ id, label, passed }] for the checklist UI. */
-export const getPasswordChecks = (password = '') =>
-  PASSWORD_RULES.map((rule) => ({ id: rule.id, label: rule.label, passed: rule.test(password) }));
+/** Returns [{ id, label, passed, status }] for the checklist UI. */
+export const getPasswordChecks = (password = '', confirmPassword) => {
+  const hasPassword = Boolean(password && password.length > 0);
+  const checks = PASSWORD_RULES.map((rule) => {
+    const isPassed = rule.test(password);
+    return {
+      id: rule.id,
+      label: rule.label,
+      passed: isPassed,
+      status: !hasPassword ? 'neutral' : isPassed ? 'met' : 'unmet',
+    };
+  });
+
+  if (confirmPassword !== undefined) {
+    const hasConfirm = Boolean(confirmPassword && confirmPassword.length > 0);
+    const isMatch = Boolean(hasPassword && hasConfirm && password === confirmPassword);
+    checks.push({
+      id: 'match',
+      label: 'Passwords must match',
+      passed: isMatch,
+      status: !hasConfirm ? 'neutral' : isMatch ? 'met' : 'unmet',
+    });
+  }
+
+  return checks;
+};
 
 /**
  * Returns an error message if the password breaks the policy, otherwise ''.
@@ -56,31 +80,81 @@ export const passwordPolicy = (password = '') => {
   if (!password) return 'Password is required';
   const failed = PASSWORD_RULES.find((rule) => !rule.test(password));
   if (!failed) return '';
-  if (failed.id === 'length') return 'Password must be 8–64 characters';
-  return `Password needs at least ${failed.label.toLowerCase()}`;
+  if (failed.id === 'length') return 'Password must be at least 8 characters';
+  if (failed.id === 'symbol') return 'Password needs at least one symbol (!@#$%^&* etc.)';
+  return `Password needs ${failed.label.toLowerCase()}`;
 };
 
 // ---------- Shared field validators (return a message or '') ----------
 
-const NAME_RE = /^[A-Za-zÀ-ÖØ-öø-ÿÑñ.' -]+$/;
+const LETTERS_ONLY_RE = /^[A-Za-zÀ-ÖØ-öø-ÿÑñ\s]+$/;
 
-/** Validates a first/last name. */
-export const validateName = (value, label) => {
+/** Validates a first/last name (letters and spaces only, max limit). */
+export const validateName = (value, label, maxLimit = 30) => {
   if (!required(value)) return `${label} is required`;
-  if (!maxLen(value, 50)) return `${label} must be at most 50 characters`;
-  if (!NAME_RE.test(value.trim())) return `${label} can only contain letters, spaces, . ' -`;
+  const trimmed = String(value).trim();
+  if (trimmed.length < 2) return `${label} must be at least 2 letters`;
+  if (trimmed.length > maxLimit) return `${label} must be at most ${maxLimit} letters`;
+  if (!LETTERS_ONLY_RE.test(trimmed)) return `${label} can only contain letters`;
   return '';
 };
 
+const EMAIL_SYNTAX =
+  /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,24}$/;
+
+/** Strict email validation requiring '@' and a real domain extension. */
 export const validateEmail = (value) => {
   if (!required(value)) return 'Email is required';
-  if (!isEmail(value)) return 'Enter a valid email address';
+  const trimmed = String(value).trim();
+  if (!trimmed.includes('@')) return "Email must include an '@'";
+
+  const [localPart, ...domainParts] = trimmed.split('@');
+  if (!localPart || !localPart.trim()) return "Email must include a name before '@'";
+  if (domainParts.length > 1) return "Email cannot contain multiple '@' symbols";
+
+  const domain = domainParts[0];
+  if (!domain || !domain.trim()) return "Email must include a domain after '@' (e.g. gmail.com)";
+  if (!domain.includes('.')) return 'Domain must include an extension (e.g. .com, .ph)';
+  if (domain.startsWith('.') || domain.endsWith('.')) return 'Domain cannot start or end with a dot';
+  if (domain.includes('..')) return 'Domain cannot contain consecutive dots';
+
+  const tld = domain.split('.').pop()?.toLowerCase();
+  if (!tld || !/^[a-z]{2,24}$/.test(tld)) {
+    return 'Enter a valid domain extension (e.g. .com, .org, .ph)';
+  }
+
+  if (!EMAIL_SYNTAX.test(trimmed)) {
+    return 'Please enter a valid email address';
+  }
+  return '';
+};
+
+/** Philippine mobile number validation (e.g. 09171234567 or +639171234567). */
+export const validatePhMobile = (value, { required: isReq = false, label = 'Phone number' } = {}) => {
+  if (!isReq && (!value || String(value).trim() === '')) return '';
+  if (isReq && (!value || String(value).trim() === '')) return `${label} is required`;
+
+  const trimmed = String(value).trim();
+  let digits = trimmed.replace(/\D/g, '');
+
+  if (digits.startsWith('63')) {
+    digits = digits.slice(2);
+  } else if (digits.startsWith('0')) {
+    digits = digits.slice(1);
+  }
+
+  if (!digits.startsWith('9')) {
+    return `${label} must start with 09 or +639`;
+  }
+  if (digits.length !== 10) {
+    return `${label} must be 11 digits (e.g. 09171234567)`;
+  }
   return '';
 };
 
 /** Optional phone: empty is fine, otherwise must be a PH mobile number. */
-export const validateOptionalPhone = (value) =>
-  required(value) && !isPhPhone(value) ? 'Use 09XXXXXXXXX or +639XXXXXXXXX' : '';
+export const validateOptionalPhone = (value, label = 'Phone number') =>
+  validatePhMobile(value, { required: false, label });
 
 /** Optional date of birth: empty is fine, otherwise must be in the past and after 1900. */
 export const validateOptionalBirthDate = (value) => {
@@ -96,14 +170,26 @@ const clean = (errors) =>
 
 // ---------- Form validators ----------
 
-/** Register form: firstName, lastName, email, phone?, dateOfBirth?, gender?, password, confirmPassword */
+/** Register form: firstName, lastName, email, phone, address, dateOfBirth, gender, password, confirmPassword */
 export function validateRegister(values) {
   return clean({
-    firstName: validateName(values.firstName, 'First name'),
-    lastName: validateName(values.lastName, 'Last name'),
+    firstName: validateName(values.firstName, 'First name', 30),
+    lastName: validateName(values.lastName, 'Last name', 30),
     email: validateEmail(values.email),
-    phone: validateOptionalPhone(values.phone),
-    dateOfBirth: validateOptionalBirthDate(values.dateOfBirth),
+    phone: validatePhMobile(values.phone, { required: true }),
+    address: !required(values.address)
+      ? 'Address is required'
+      : !maxLen(values.address, 200)
+        ? 'Address must be at most 200 characters'
+        : '',
+    dateOfBirth: !required(values.dateOfBirth)
+      ? 'Birth date is required'
+      : validateOptionalBirthDate(values.dateOfBirth),
+    gender: !required(values.gender)
+      ? 'Please select your gender'
+      : !['male', 'female'].includes(values.gender)
+        ? 'Select a valid gender'
+        : '',
     password: passwordPolicy(values.password),
     confirmPassword: !required(values.confirmPassword)
       ? 'Please confirm your password'

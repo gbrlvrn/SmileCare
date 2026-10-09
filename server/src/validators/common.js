@@ -16,10 +16,10 @@ const { DATE_REGEX, TIME_REGEX, isValidDateString, toMinutes, clinicNow } = requ
 
 const NAME_REGEX = /^[\p{L}\p{M}' .-]+$/u;
 const PHONE_REGEX = /^(09|\+639)\d{9}$/;
-const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,64}$/;
+const PASSWORD_REGEX = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^a-zA-Z0-9]).{8,64}$/;
 
 const PASSWORD_MESSAGE =
-  'Password must be 8-64 characters and include an uppercase letter, a lowercase letter and a number';
+  'Password must be 8-64 characters and include an uppercase letter, a lowercase letter, a number and a symbol';
 
 // Control characters except tab (\x09) and newline (\x0A), including null bytes.
 // eslint-disable-next-line no-control-regex
@@ -88,15 +88,21 @@ const confirmPasswordRule = (field, matchField) =>
     .custom((value, { req }) => value === req.body[matchField])
     .withMessage('Passwords do not match');
 
-const phoneRule = (field = 'phone') =>
-  body(field)
-    .optional({ values: 'falsy' })
+const phoneRule = (field = 'phone', { required = false } = {}) => {
+  let chain = body(field);
+  if (required) {
+    chain = chain.exists({ values: 'falsy' }).withMessage('Mobile number is required').bail();
+  } else {
+    chain = chain.optional({ values: 'falsy' });
+  }
+  return chain
     .isString()
     .withMessage('Phone must be text')
     .bail()
     .trim()
     .matches(PHONE_REGEX)
     .withMessage('Phone must be a valid PH mobile number (e.g. 09171234567)');
+};
 
 /** A "YYYY-MM-DD" date that exists on the calendar. */
 const isDate = (value) => typeof value === 'string' && DATE_REGEX.test(value) && isValidDateString(value);
@@ -110,11 +116,17 @@ const dateOfBirthRule = (field = 'dateOfBirth') =>
     .custom((value) => value >= '1900-01-01' && value <= clinicNow().date)
     .withMessage('Date of birth cannot be in the future');
 
-const genderRule = (field = 'gender') =>
-  body(field)
-    .optional({ values: 'falsy' })
+const genderRule = (field = 'gender', { required = false } = {}) => {
+  let chain = body(field);
+  if (required) {
+    chain = chain.exists({ values: 'falsy' }).withMessage('Gender is required').bail();
+  } else {
+    chain = chain.optional({ values: 'falsy' });
+  }
+  return chain
     .isIn(GENDERS)
     .withMessage(`Gender must be one of: ${GENDERS.join(', ')}`);
+};
 
 /**
  * Free-text field: HTML tags and control characters stripped, trimmed, length-checked.

@@ -28,13 +28,13 @@ export const STATUS_ACTIONS = {
   confirmed: {
     label: 'Confirm',
     icon: CheckCircle,
-    variant: 'primary',
+    variant: 'success',
     success: 'Appointment confirmed.',
   },
   completed: {
     label: 'Mark completed',
     icon: CheckAll,
-    variant: 'success',
+    variant: 'primary',
     success: 'Appointment marked as completed.',
   },
   'no-show': {
@@ -67,8 +67,8 @@ export const isTerminalStatus = (status) => getAllowedStatuses(status).length ==
 /** Chart colours per status (same palette as theme.css). */
 export const STATUS_COLORS = {
   pending: '#f5a524',
-  confirmed: '#1e6fe8',
-  completed: '#12a37f',
+  confirmed: '#10b981',
+  completed: '#2563eb',
   cancelled: '#e5484d',
   'no-show': '#94a3b8',
 };

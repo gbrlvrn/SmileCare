@@ -3,7 +3,7 @@ import { Button, Col, Row } from 'react-bootstrap';
 import { JournalMedical } from 'react-bootstrap-icons';
 import { getAppointments } from '../../api/appointmentApi';
 import EmptyState from '../../components/EmptyState';
-import Loader from '../../components/Loader';
+import TreatmentHistorySkeleton from '../../components/skeletons/TreatmentHistorySkeleton';
 import PageHeader from '../../components/PageHeader';
 import Pagination from '../../components/Pagination';
 import SearchBar from '../../components/SearchBar';
@@ -48,7 +48,7 @@ export default function TreatmentHistory() {
       </div>
 
       {loading && appointments.length === 0 ? (
-        <Loader label="Loading treatment history..." className="my-5" />
+        <TreatmentHistorySkeleton count={3} />
       ) : error ? (
         <div className="alert alert-danger d-flex justify-content-between align-items-center">
           <div>{error}</div>

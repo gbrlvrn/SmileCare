@@ -1,6 +1,7 @@
 import { Button, Container, Nav, Navbar } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import useAuth from '../hooks/useAuth';
+import useAuthModal from '../hooks/useAuthModal';
 import { getHomePath } from '../utils/redirect';
 import Logo from './Logo';
 
@@ -15,6 +16,7 @@ const SECTION_LINKS = [
 /** Sticky top navigation for public pages. Shows "Dashboard" instead of "Login" when signed in. */
 export default function PublicNavbar() {
   const { isAuthenticated, user } = useAuth();
+  const { openLogin } = useAuthModal();
 
   return (
     <Navbar expand="lg" sticky="top" collapseOnSelect className="sc-navbar">
@@ -37,14 +39,13 @@ export default function PublicNavbar() {
                 Go to dashboard
               </Button>
             ) : (
-              <>
-                <Nav.Link as={Link} to="/login" className="fw-semibold">
-                  Login
-                </Nav.Link>
-                <Button as={Link} to="/patient/book" variant="primary">
-                  Book Appointment
-                </Button>
-              </>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => openLogin()}
+              >
+                Login
+              </Button>
             )}
           </Nav>
         </Navbar.Collapse>

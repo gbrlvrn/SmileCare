@@ -30,7 +30,13 @@ import { getErrorMessage, getFieldErrors } from '../api/errors';
  *   submitting: boolean, serverError: string, setServerError, setFieldErrors, reset(nextValues?)
  * }}
  */
-export default function useForm({ initialValues, validate = () => ({}), onSubmit }) {
+export default function useForm({
+  initialValues,
+  validate = () => ({}),
+  onSubmit,
+  realtime = false,
+  showValid = true,
+}) {
   const [values, setValues] = useState(initialValues);
   const [touched, setTouched] = useState({});
   const [submitted, setSubmitted] = useState(false);
@@ -58,14 +64,27 @@ export default function useForm({ initialValues, validate = () => ({}), onSubmit
     });
   };
 
-  const setFieldValue = useCallback((name, value) => {
-    setValues((prev) => ({ ...prev, [name]: value }));
-    clearServerError(name);
-  }, []);
+  const setFieldValue = useCallback(
+    (name, value) => {
+      setValues((prev) => ({ ...prev, [name]: value }));
+      clearServerError(name);
+      setServerError('');
+      if (realtime) {
+        setTouched((prev) => (prev[name] ? prev : { ...prev, [name]: true }));
+      }
+    },
+    [realtime]
+  );
 
   const handleChange = (event) => {
     const { name, value, type, checked } = event.target;
-    setFieldValue(name, type === 'checkbox' ? checked : value);
+    const finalValue = type === 'checkbox' ? checked : value;
+    setValues((prev) => ({ ...prev, [name]: finalValue }));
+    clearServerError(name);
+    setServerError('');
+    if (realtime) {
+      setTouched((prev) => (prev[name] ? prev : { ...prev, [name]: true }));
+    }
   };
 
   const handleBlur = (event) => {
@@ -95,30 +114,38 @@ export default function useForm({ initialValues, validate = () => ({}), onSubmit
     } catch (err) {
       const fieldErrors = getFieldErrors(err);
       setServerFieldErrors(fieldErrors);
-      // Show the general message if there are no field errors, or some refer to fields not in this form.
-      const unknownField = Object.keys(fieldErrors).some((name) => !(name in values));
-      if (Object.keys(fieldErrors).length === 0 || unknownField) {
-        setServerError(getErrorMessage(err));
-      }
+      setServerError(getErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
   };
 
-  /** Props for a <FormInput>: name, value, onChange, onBlur, error. */
-  const field = (name) => ({
-    name,
-    value: values[name] ?? '',
-    onChange: handleChange,
-    onBlur: handleBlur,
-    error: errors[name],
-  });
+  /** Props for a <FormInput>: name, value, onChange, onBlur, error, isInvalid, isValid. */
+  const field = (name) => {
+    const isTouched = Boolean(submitted || touched[name]);
+    const val = values[name];
+    const hasVal = val !== undefined && val !== null && String(val).trim() !== '';
+    const err = errors[name];
+    const isInvalid = Boolean(err);
+    const isValid = Boolean(showValid && !serverError && isTouched && hasVal && !err && !clientErrors[name]);
+    return {
+      name,
+      value: val ?? '',
+      onChange: handleChange,
+      onBlur: handleBlur,
+      error: err,
+      isInvalid,
+      isValid,
+    };
+  };
 
   return {
     values,
     setValues,
     setFieldValue,
     errors,
+    clientErrors,
+    touched,
     handleChange,
     handleBlur,
     handleSubmit,

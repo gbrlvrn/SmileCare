@@ -5,7 +5,7 @@ import { CalendarCheck, CalendarPlus } from 'react-bootstrap-icons';
 import { getAppointments } from '../../api/appointmentApi';
 import AppointmentCard from '../../components/AppointmentCard';
 import EmptyState from '../../components/EmptyState';
-import Loader from '../../components/Loader';
+import AppointmentListSkeleton from '../../components/skeletons/AppointmentListSkeleton';
 import PageHeader from '../../components/PageHeader';
 import Pagination from '../../components/Pagination';
 import SearchBar from '../../components/SearchBar';
@@ -17,7 +17,7 @@ import { STATUS_OPTIONS } from '../../utils/constants';
 import '../../components/patient/patient.css';
 
 export default function MyAppointments() {
-  const [tab, setTab] = useState('upcoming'); // 'upcoming' | 'past' | 'all'
+  const [tab, setTab] = useState('upcoming'); // 'upcoming' | 'past' | 'cancelled' | 'all'
   const [cancelTarget, setCancelTarget] = useState(null);
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
 
@@ -41,10 +41,16 @@ export default function MyAppointments() {
     setTab(nextTab);
     if (nextTab === 'upcoming') {
       setFilter('upcoming', 'true');
+      setFilter('status', undefined);
     } else if (nextTab === 'past') {
       setFilter('upcoming', 'false');
+      setFilter('status', undefined);
+    } else if (nextTab === 'cancelled') {
+      setFilter('upcoming', undefined);
+      setFilter('status', 'cancelled');
     } else {
       setFilter('upcoming', undefined);
+      setFilter('status', undefined);
     }
   };
 
@@ -64,7 +70,7 @@ export default function MyAppointments() {
       {/* Toolbar: Search, Status filter, Tabs */}
       <div className="sc-card mb-4 p-3">
         <Row className="g-3 align-items-center">
-          <Col md={5}>
+          <Col lg={4} md={12}>
             <SearchBar
               value={search}
               onChange={setSearch}
@@ -72,10 +78,18 @@ export default function MyAppointments() {
             />
           </Col>
 
-          <Col sm={6} md={3}>
+          <Col sm={5} lg={3} md={4}>
             <Form.Select
               value={filters.status || ''}
-              onChange={(e) => setFilter('status', e.target.value || undefined)}
+              onChange={(e) => {
+                const val = e.target.value || undefined;
+                setFilter('status', val);
+                if (val === 'cancelled') {
+                  setTab('cancelled');
+                } else if (tab === 'cancelled' && val !== 'cancelled') {
+                  setTab('all');
+                }
+              }}
               aria-label="Filter by appointment status"
             >
               <option value="">All statuses</option>
@@ -87,8 +101,8 @@ export default function MyAppointments() {
             </Form.Select>
           </Col>
 
-          <Col sm={6} md={4} className="d-flex justify-content-sm-end">
-            <ButtonGroup aria-label="Appointment view filter">
+          <Col sm={7} lg={5} md={8} className="d-flex justify-content-sm-end">
+            <ButtonGroup aria-label="Appointment view filter" className="flex-wrap">
               <Button
                 variant={tab === 'upcoming' ? 'primary' : 'outline-primary'}
                 size="sm"
@@ -104,6 +118,13 @@ export default function MyAppointments() {
                 Past
               </Button>
               <Button
+                variant={tab === 'cancelled' ? 'primary' : 'outline-primary'}
+                size="sm"
+                onClick={() => handleTabChange('cancelled')}
+              >
+                Cancelled
+              </Button>
+              <Button
                 variant={tab === 'all' ? 'primary' : 'outline-primary'}
                 size="sm"
                 onClick={() => handleTabChange('all')}
@@ -117,7 +138,7 @@ export default function MyAppointments() {
 
       {/* Content */}
       {loading && appointments.length === 0 ? (
-        <Loader label="Loading appointments..." className="my-5" />
+        <AppointmentListSkeleton count={4} />
       ) : error ? (
         <div className="alert alert-danger d-flex justify-content-between align-items-center">
           <div>{error}</div>
@@ -129,15 +150,23 @@ export default function MyAppointments() {
         <EmptyState
           icon={CalendarCheck}
           title={
-            search || filters.status
+            search
               ? 'No appointments found'
               : tab === 'upcoming'
               ? 'No upcoming appointments'
+              : tab === 'past'
+              ? 'No past appointments'
+              : tab === 'cancelled'
+              ? 'No cancelled appointments'
+              : filters.status
+              ? `No ${filters.status} appointments`
               : 'No appointments recorded'
           }
           message={
             search || filters.status
               ? 'No appointments match your search or filter criteria.'
+              : tab === 'cancelled'
+              ? 'You do not have any cancelled appointments.'
               : 'You do not have any scheduled appointments in this view.'
           }
           action={
@@ -154,6 +183,7 @@ export default function MyAppointments() {
                 key={appt._id}
                 appointment={appt}
                 to={`/patient/appointments/${appt._id}`}
+                showDentistPortrait
                 actions={
                   canPatientChange(appt) && (
                     <div className="d-flex gap-2">

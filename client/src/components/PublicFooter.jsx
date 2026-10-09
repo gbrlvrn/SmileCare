@@ -1,6 +1,6 @@
 import { Col, Container, Row } from 'react-bootstrap';
 import { Clock, Envelope, GeoAlt, Telephone } from 'react-bootstrap-icons';
-import { Link } from 'react-router-dom';
+import useAuthModal from '../hooks/useAuthModal';
 import { CLINIC_INFO } from '../utils/constants';
 import Logo from './Logo';
 
@@ -10,6 +10,7 @@ const YEAR = new Date().getFullYear();
 /** Footer for public pages: about, quick links, clinic hours and contact details. */
 export default function PublicFooter() {
   const year = YEAR;
+  const { openLogin, openRegister } = useAuthModal();
 
   return (
     <footer className="sc-footer">
@@ -28,8 +29,24 @@ export default function PublicFooter() {
               <li><a href="#services">Services</a></li>
               <li><a href="#dentists">Our dentists</a></li>
               <li><a href="#how-it-works">How it works</a></li>
-              <li><Link to="/login">Patient login</Link></li>
-              <li><Link to="/register">Create account</Link></li>
+              <li>
+                <button
+                  type="button"
+                  className="btn btn-link p-0 text-decoration-none sc-footer-action-link text-start"
+                  onClick={() => openLogin()}
+                >
+                  Patient login
+                </button>
+              </li>
+              <li>
+                <button
+                  type="button"
+                  className="btn btn-link p-0 text-decoration-none sc-footer-action-link text-start"
+                  onClick={() => openRegister()}
+                >
+                  Create account
+                </button>
+              </li>
             </ul>
           </Col>
 

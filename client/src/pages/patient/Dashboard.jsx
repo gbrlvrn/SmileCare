@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { Alert, Button, Col, Row } from 'react-bootstrap';
 import {
@@ -8,23 +8,62 @@ import {
   ClockHistory,
   GeoAlt,
   JournalMedical,
+  LightbulbFill,
   Telephone,
 } from 'react-bootstrap-icons';
+import { getAppointments } from '../../api/appointmentApi';
 import { getPatientDashboard } from '../../api/dashboardApi';
 import AppointmentCard from '../../components/AppointmentCard';
 import EmptyState from '../../components/EmptyState';
-import Loader from '../../components/Loader';
 import PageHeader from '../../components/PageHeader';
 import StatCard from '../../components/StatCard';
 import StatusBadge from '../../components/StatusBadge';
 import CancelAppointmentModal from '../../components/patient/CancelAppointmentModal';
+import PatientCalendarTracker from '../../components/patient/PatientCalendarTracker';
 import RescheduleModal from '../../components/patient/RescheduleModal';
-import { canPatientChange, dentistLabel, serviceLabel } from '../../components/patient/appointmentRules';
+import { canPatientChange, dentistLabel, serviceLabel, servicesLabel } from '../../components/patient/appointmentRules';
 import useAuth from '../../hooks/useAuth';
 import useFetch from '../../hooks/useFetch';
 import { CLINIC_HOURS, CLINIC_INFO } from '../../utils/constants';
 import { dateParts, formatTime, formatTimeRange } from '../../utils/formatters';
+import PatientDashboardSkeleton from './PatientDashboardSkeleton';
 import '../../components/patient/patient.css';
+
+/**
+ * Returns a warm, time-appropriate greeting.
+ */
+function getGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Good morning';
+  if (hour < 18) return 'Good afternoon';
+  return 'Good evening';
+}
+
+/**
+ * Returns a friendly relative countdown label for an upcoming visit.
+ */
+function getCountdownBadge(dateStr) {
+  if (!dateStr) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr);
+  target.setHours(0, 0, 0, 0);
+  const diffDays = Math.round((target - today) / (1000 * 60 * 60 * 24));
+  if (diffDays === 0) return { label: 'Today', bg: 'bg-warning text-dark' };
+  if (diffDays === 1) return { label: 'Tomorrow', bg: 'bg-warning text-dark' };
+  if (diffDays > 1 && diffDays <= 7) return { label: `In ${diffDays} days`, bg: 'bg-warning text-dark' };
+  if (diffDays > 7 && diffDays <= 30) return { label: `In ${diffDays} days`, bg: 'bg-warning text-dark' };
+  return { label: 'Upcoming', bg: 'bg-warning text-dark' };
+}
+
+const DENTAL_TIPS = [
+  'Remember to brush for a full 2 minutes twice a day with fluoride toothpaste.',
+  'Flossing once daily cleans the 40% of tooth surfaces that brushing misses.',
+  'Replace your toothbrush every 3 months or sooner if bristles become frayed.',
+  'Rinse your mouth with water after drinking coffee or tea to reduce staining.',
+  'Routine dental cleanings every 6 months prevent plaque from hardening into tartar.',
+  'Drink water after meals to help wash away food particles and protect your enamel.',
+];
 
 export default function PatientDashboard() {
   const { user } = useAuth();
@@ -32,15 +71,61 @@ export default function PatientDashboard() {
 
   const [rescheduleTarget, setRescheduleTarget] = useState(null);
   const [cancelTarget, setCancelTarget] = useState(null);
+  const [recentFilter, setRecentFilter] = useState('all'); // 'all' | 'upcoming' | 'completed' | 'cancelled'
+  const [appointmentsList, setAppointmentsList] = useState([]);
+
+  const fetchCalendarAppointments = useCallback(() => {
+    getAppointments({ limit: 100 })
+      .then((res) => {
+        setAppointmentsList(res?.data || []);
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetchCalendarAppointments();
+  }, [fetchCalendarAppointments]);
+
+  const handleRefetch = useCallback(() => {
+    refetch();
+    fetchCalendarAppointments();
+  }, [refetch, fetchCalendarAppointments]);
 
   const next = data?.nextAppointment || null;
   const counts = data?.counts || { upcoming: 0, completed: 0, cancelled: 0, total: 0 };
   const recent = data?.recentAppointments || [];
 
+  const calendarAppointments = useMemo(() => {
+    if (appointmentsList.length > 0) return appointmentsList;
+    const combined = [...(data?.recentAppointments || [])];
+    if (next && !combined.some((a) => a._id === next._id)) {
+      combined.push(next);
+    }
+    return combined;
+  }, [appointmentsList, data?.recentAppointments, next]);
+
+  const [greeting] = useState(getGreeting);
+  const [tip] = useState(() => DENTAL_TIPS[new Date().getDate() % DENTAL_TIPS.length]);
+  const countdown = next ? getCountdownBadge(next.date) : null;
+
+  const filteredRecent = recent.filter((appt) => {
+    if (recentFilter === 'all') return true;
+    if (recentFilter === 'upcoming') {
+      return ['pending', 'confirmed'].includes(appt.status);
+    }
+    if (recentFilter === 'completed') {
+      return appt.status === 'completed';
+    }
+    if (recentFilter === 'cancelled') {
+      return appt.status === 'cancelled';
+    }
+    return true;
+  });
+
   return (
     <div>
       <PageHeader
-        title={`Welcome back, ${user?.firstName || 'Patient'}!`}
+        title={`${greeting}, ${user?.firstName || 'Patient'}!`}
         subtitle="Manage your dental appointments, view upcoming visits, and track treatment history."
         actions={
           <Button as={Link} to="/patient/book" variant="primary">
@@ -53,14 +138,14 @@ export default function PatientDashboard() {
       {error && (
         <Alert variant="danger" className="d-flex align-items-center justify-content-between">
           <div>{error}</div>
-          <Button variant="outline-danger" size="sm" onClick={refetch}>
+          <Button variant="outline-danger" size="sm" onClick={handleRefetch}>
             Try again
           </Button>
         </Alert>
       )}
 
       {loading && !data ? (
-        <Loader className="my-5" label="Loading dashboard..." />
+        <PatientDashboardSkeleton />
       ) : (
         <>
           {/* Next Appointment Banner */}
@@ -80,13 +165,30 @@ export default function PatientDashboard() {
                       );
                     })()}
                     <div>
-                      <div className="sc-welcome-eyebrow">Your next visit</div>
-                      <h2 className="sc-welcome-title mb-1">{serviceLabel(next.service)}</h2>
-                      <div className="sc-meta-list text-white-50">
-                        <span>{formatTimeRange(next.startTime, next.endTime)}</span>
-                        <span>&bull;</span>
-                        <span>{dentistLabel(next.dentist)}</span>
-                        <span>&bull;</span>
+                      <div className="d-flex align-items-center gap-2 mb-1 flex-wrap">
+                        <span className="sc-welcome-eyebrow mb-0">Your next visit</span>
+                        {countdown && (
+                          <span className={`badge ${countdown.bg} fw-bold sc-countdown-badge`}>
+                            {countdown.label}
+                          </span>
+                        )}
+                      </div>
+                      <h2 className="sc-welcome-title mb-1 d-flex align-items-center flex-wrap">
+                        {servicesLabel(next)}
+                        {next.services && next.services.length > 1 && (
+                          <span
+                            className="badge bg-warning text-dark border border-warning ms-2"
+                            style={{ fontSize: '0.72rem', verticalAlign: 'middle' }}
+                          >
+                            {next.services.length} services
+                          </span>
+                        )}
+                      </h2>
+                      <div className="sc-meta-list text-white">
+                        <span className="fw-medium text-white">{formatTimeRange(next.startTime, next.endTime)}</span>
+                        <span className="opacity-50" aria-hidden="true">&bull;</span>
+                        <span className="fw-medium text-white">{dentistLabel(next.dentist)}</span>
+                        <span className="opacity-50" aria-hidden="true">&bull;</span>
                         <StatusBadge status={next.status} />
                       </div>
                     </div>
@@ -173,27 +275,67 @@ export default function PatientDashboard() {
             {/* Recent Appointments */}
             <Col lg={8}>
               <div className="sc-card h-100">
-                <div className="d-flex justify-content-between align-items-center mb-3">
-                  <h3 className="h6 fw-bold mb-0">Recent appointments</h3>
+                <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                  <div className="d-flex align-items-center gap-2">
+                    <h3 className="h6 fw-bold mb-0">Recent appointments</h3>
+                    {recent.length > 0 && (
+                      <div className="btn-group btn-group-sm sc-dashboard-filter ms-2" role="group" aria-label="Filter recent appointments">
+                        <button
+                          type="button"
+                          className={`btn ${recentFilter === 'all' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                          onClick={() => setRecentFilter('all')}
+                        >
+                          All
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn ${recentFilter === 'upcoming' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                          onClick={() => setRecentFilter('upcoming')}
+                        >
+                          Upcoming
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn ${recentFilter === 'completed' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                          onClick={() => setRecentFilter('completed')}
+                        >
+                          Completed
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn ${recentFilter === 'cancelled' ? 'btn-primary' : 'btn-outline-secondary'}`}
+                          onClick={() => setRecentFilter('cancelled')}
+                        >
+                          Cancelled
+                        </button>
+                      </div>
+                    )}
+                  </div>
                   <Link to="/patient/appointments" className="small fw-semibold text-decoration-none">
                     View all appointments &rarr;
                   </Link>
                 </div>
 
-                {recent.length === 0 ? (
+                {filteredRecent.length === 0 ? (
                   <EmptyState
                     icon={CalendarEvent}
-                    title="No appointments yet"
-                    message="You haven't scheduled any appointments yet."
+                    title={recent.length === 0 ? 'No appointments yet' : 'No matching appointments'}
+                    message={
+                      recent.length === 0
+                        ? "You haven't scheduled any appointments yet."
+                        : `No ${recentFilter} appointments found in your recent history.`
+                    }
                     action={
-                      <Button as={Link} to="/patient/book" variant="primary" size="sm">
-                        Book your first visit
-                      </Button>
+                      recent.length === 0 ? (
+                        <Button as={Link} to="/patient/book" variant="primary" size="sm">
+                          Book your first visit
+                        </Button>
+                      ) : null
                     }
                   />
                 ) : (
                   <div className="d-flex flex-column gap-3">
-                    {recent.slice(0, 4).map((appt) => (
+                    {filteredRecent.slice(0, 4).map((appt) => (
                       <AppointmentCard
                         key={appt._id}
                         appointment={appt}
@@ -220,38 +362,25 @@ export default function PatientDashboard() {
               </div>
             </Col>
 
-            {/* Quick Actions & Clinic Hours */}
+            {/* Calendar Tracker, Daily Tip & Clinic Hours */}
             <Col lg={4}>
               <div className="d-flex flex-column gap-4">
-                {/* Quick actions card */}
-                <div className="sc-card">
-                  <h3 className="h6 fw-bold mb-3">Quick actions</h3>
-                  <div className="d-flex flex-column gap-2">
-                    <Button
-                      as={Link}
-                      to="/patient/book"
-                      variant="outline-primary"
-                      className="d-flex align-items-center justify-content-start text-start p-2"
-                    >
-                      <CalendarPlus className="fs-5 me-2 flex-shrink-0" />
-                      <div>
-                        <div className="fw-semibold">Book an appointment</div>
-                        <div className="small text-muted">Choose your service, dentist & time</div>
-                      </div>
-                    </Button>
-                    <Button
-                      as={Link}
-                      to="/patient/history"
-                      variant="outline-secondary"
-                      className="d-flex align-items-center justify-content-start text-start p-2"
-                    >
-                      <JournalMedical className="fs-5 me-2 flex-shrink-0" />
-                      <div>
-                        <div className="fw-semibold">Treatment history</div>
-                        <div className="small text-muted">View past records & prescriptions</div>
-                      </div>
-                    </Button>
+                {/* Visual Appointment Calendar Tracker */}
+                <PatientCalendarTracker
+                  appointments={calendarAppointments}
+                  nextAppointment={next}
+                  onReschedule={setRescheduleTarget}
+                />
+
+                {/* Daily Dental Tip Widget */}
+                <div className="sc-tip-card">
+                  <div className="d-flex align-items-center gap-2 mb-2 text-warning-emphasis fw-bold small">
+                    <LightbulbFill className="text-warning" size={16} aria-hidden="true" />
+                    <span>Daily Oral Health Tip</span>
                   </div>
+                  <p className="small text-muted mb-0 lh-sm">
+                    {tip}
+                  </p>
                 </div>
 
                 {/* Clinic Info card */}
@@ -294,7 +423,7 @@ export default function PatientDashboard() {
           onClose={() => setRescheduleTarget(null)}
           onRescheduled={() => {
             setRescheduleTarget(null);
-            refetch();
+            handleRefetch();
           }}
         />
       )}
@@ -306,7 +435,7 @@ export default function PatientDashboard() {
           onClose={() => setCancelTarget(null)}
           onCancelled={() => {
             setCancelTarget(null);
-            refetch();
+            handleRefetch();
           }}
         />
       )}

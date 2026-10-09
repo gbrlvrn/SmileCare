@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Alert, Button, Col, Form, Modal, Row, Table } from 'react-bootstrap';
-import { Eye, PencilSquare, PersonPlus, Trash } from 'react-bootstrap-icons';
+import { Eye, GenderFemale, GenderMale, PencilSquare, PersonPlus, Trash } from 'react-bootstrap-icons';
 import { createPatient, deletePatient, getPatients, updatePatient } from '../../api/patientApi';
 import EmptyState from '../../components/EmptyState';
 import FormInput from '../../components/FormInput';
-import Loader from '../../components/Loader';
+import TableSkeleton from '../../components/skeletons/TableSkeleton';
 import PageHeader from '../../components/PageHeader';
 import Pagination from '../../components/Pagination';
 import PasswordChecklist from '../../components/PasswordChecklist';
@@ -185,7 +185,7 @@ export default function StaffPatients() {
 
       {/* Content table */}
       {loading && patients.length === 0 ? (
-        <Loader label="Loading patients..." className="my-5" />
+        <TableSkeleton columns={6} rows={7} hasAvatar={true} />
       ) : error ? (
         <div className="alert alert-danger d-flex justify-content-between align-items-center">
           <div>{error}</div>
@@ -246,7 +246,17 @@ export default function StaffPatients() {
                       <div className="small text-body">{p.email}</div>
                       <div className="small text-muted font-monospace">{p.phone || 'No phone'}</div>
                     </td>
-                    <td className="small text-capitalize">{p.gender || '—'}</td>
+                    <td className="small">
+                      {p.gender ? (
+                        <span className="d-inline-flex align-items-center gap-1 text-capitalize">
+                          {p.gender === 'male' && <GenderMale className="text-primary" aria-hidden="true" />}
+                          {p.gender === 'female' && <GenderFemale className="text-danger" aria-hidden="true" />}
+                          <span>{p.gender === 'prefer_not_to_say' ? 'Prefer not to say' : p.gender}</span>
+                        </span>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
+                    </td>
                     <td>
                       <span className="badge bg-light text-dark border">
                         {p.appointmentCount || 0} visits

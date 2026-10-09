@@ -5,6 +5,7 @@ const {
   passwordRule,
   confirmPasswordRule,
   phoneRule,
+  textRule,
   dateOfBirthRule,
   genderRule,
 } = require('./common');
@@ -15,9 +16,10 @@ const registerRules = [
   emailRule(),
   passwordRule(),
   confirmPasswordRule('confirmPassword', 'password'),
-  phoneRule(),
+  phoneRule('phone', { required: true }),
+  textRule('address', 'Address', 200, { required: false }),
   dateOfBirthRule(),
-  genderRule(),
+  genderRule('gender', { required: true }),
 ];
 
 // Login only checks presence/type: the password policy is not revealed here.
@@ -31,4 +33,22 @@ const loginRules = [
     .withMessage('Password must be text'),
 ];
 
-module.exports = { registerRules, loginRules };
+const verifyOtpRules = [
+  emailRule(),
+  body('otp')
+    .exists({ values: 'falsy' })
+    .withMessage('Verification code is required')
+    .bail()
+    .isString()
+    .withMessage('Verification code must be text')
+    .bail()
+    .trim()
+    .isLength({ min: 6, max: 6 })
+    .withMessage('Verification code must be 6 digits')
+    .matches(/^\d{6}$/)
+    .withMessage('Verification code must contain 6 numbers'),
+];
+
+const resendOtpRules = [emailRule()];
+
+module.exports = { registerRules, loginRules, verifyOtpRules, resendOtpRules };

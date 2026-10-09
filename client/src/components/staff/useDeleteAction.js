@@ -17,7 +17,18 @@ import useToast from '../../hooks/useToast';
  * @param {{ successMessage?: string | ((item: object) => string), onDeleted?: (item: object) => void }} [options]
  * @returns {{ target: object|null, show: boolean, ask, cancel, confirm, loading: boolean, error: { status, message } | null }}
  */
-export default function useDeleteAction(deleteFn, { successMessage = 'Deleted successfully.', onDeleted } = {}) {
+export default function useDeleteAction(deleteFnOrConfig, options = {}) {
+  const config =
+    typeof deleteFnOrConfig === 'function'
+      ? { deleteFn: deleteFnOrConfig, ...options }
+      : (deleteFnOrConfig || {});
+
+  const {
+    deleteFn,
+    successMessage = 'Deleted successfully.',
+    onDeleted,
+  } = config;
+
   const { showToast } = useToast();
   // `target` stays set while the dialog fades out, so its text does not flicker.
   const [target, setTarget] = useState(null);
@@ -26,11 +37,12 @@ export default function useDeleteAction(deleteFn, { successMessage = 'Deleted su
   const [error, setError] = useState(null);
 
   /** Opens the dialog for `item`. */
-  const ask = (item) => {
+  const open = (item) => {
     setTarget(item);
     setError(null);
     setShow(true);
   };
+  const ask = open;
 
   const cancel = () => {
     if (!loading) setShow(false);
@@ -41,7 +53,9 @@ export default function useDeleteAction(deleteFn, { successMessage = 'Deleted su
     setLoading(true);
     setError(null);
     try {
-      await deleteFn(target._id);
+      if (typeof deleteFn === 'function') {
+        await deleteFn(target);
+      }
       const message = typeof successMessage === 'function' ? successMessage(target) : successMessage;
       showToast({ type: 'success', message });
       setShow(false);
@@ -54,5 +68,5 @@ export default function useDeleteAction(deleteFn, { successMessage = 'Deleted su
     }
   };
 
-  return { target, show, ask, cancel, confirm, loading, error };
+  return { target, show, open, ask, cancel, confirm, loading, error };
 }

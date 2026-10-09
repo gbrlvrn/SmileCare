@@ -1,6 +1,8 @@
 import { Clock, Person, PersonBadge } from 'react-bootstrap-icons';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { dateParts, formatDuration, formatTimeRange, fullName } from '../utils/formatters';
+import { getDentistPortrait } from '../utils/dentistImages';
+import { servicesLabel } from './patient/appointmentRules';
 import StatusBadge from './StatusBadge';
 
 /**
@@ -18,15 +20,48 @@ export default function AppointmentCard({
   actions,
   to,
   showPatient = false,
+  showDentistPortrait = false,
   children,
   className = '',
 }) {
+  const navigate = useNavigate();
+
   if (!appointment) return null;
-  const { date, startTime, endTime, status, service, dentist, patient } = appointment;
+  const { date, startTime, endTime, status, service, services, dentist, patient } = appointment;
   const parts = dateParts(date);
+  const titleText = servicesLabel(appointment) || 'Dental appointment';
+  const totalDuration = services?.length
+    ? services.reduce((acc, s) => acc + (s.durationMinutes || 0), 0)
+    : (service?.durationMinutes || 0);
+
+  const handleCardClick = (e) => {
+    if (!to) return;
+    if (e.target.closest('button, a, input, select, textarea, [role="button"], .sc-card-actions')) {
+      return;
+    }
+    navigate(to);
+  };
+
+  const handleKeyDown = (e) => {
+    if (!to) return;
+    if (e.key === 'Enter' || e.key === ' ') {
+      if (e.target.closest('button, a, input, select, textarea, [role="button"], .sc-card-actions')) {
+        return;
+      }
+      e.preventDefault();
+      navigate(to);
+    }
+  };
 
   return (
-    <article className={`sc-card sc-appointment-card ${className}`}>
+    <article
+      className={`sc-card sc-appointment-card ${to ? 'is-clickable' : ''} ${className}`}
+      onClick={to ? handleCardClick : undefined}
+      onKeyDown={to ? handleKeyDown : undefined}
+      tabIndex={to ? 0 : undefined}
+      role={to ? 'link' : undefined}
+      aria-label={to ? `View appointment details for ${titleText}` : undefined}
+    >
       <div className="sc-date-tile" aria-hidden="true">
         <span className="sc-date-month">{parts.month}</span>
         <span className="sc-date-day">{parts.day}</span>
@@ -35,14 +70,19 @@ export default function AppointmentCard({
 
       <div className="flex-grow-1 min-w-0">
         <div className="d-flex justify-content-between align-items-start gap-2 flex-wrap">
-          <h3 className="h6 fw-semibold mb-1">
+          <h3 className="h6 fw-semibold mb-1 d-flex align-items-center flex-wrap">
             <span className="visually-hidden">{parts.label}: </span>
             {to ? (
               <Link to={to} className="sc-link-plain">
-                {service?.name || 'Dental appointment'}
+                {titleText}
               </Link>
             ) : (
-              service?.name || 'Dental appointment'
+              titleText
+            )}
+            {services?.length > 1 && (
+              <span className="badge bg-primary-subtle text-primary border border-primary-subtle ms-2" style={{ fontSize: '0.68rem', fontWeight: 600 }}>
+                {services.length} services
+              </span>
             )}
           </h3>
           <StatusBadge status={status} />
@@ -52,14 +92,35 @@ export default function AppointmentCard({
           <li>
             <Clock aria-hidden="true" />
             {formatTimeRange(startTime, endTime)}
-            {service?.durationMinutes ? ` · ${formatDuration(service.durationMinutes)}` : ''}
+            {totalDuration ? ` · ${formatDuration(totalDuration)}` : ''}
           </li>
           {dentist && (
-            <li>
-              <PersonBadge aria-hidden="true" />
-              {fullName(dentist)}
-              {dentist.specialization ? ` · ${dentist.specialization}` : ''}
-            </li>
+            showDentistPortrait ? (
+              <li className="d-inline-flex align-items-center gap-2">
+                <img
+                  src={getDentistPortrait(dentist)}
+                  alt={fullName(dentist)}
+                  className="rounded-circle object-fit-cover shadow-xs border"
+                  style={{
+                    width: '24px',
+                    height: '24px',
+                    borderColor: 'rgba(30, 111, 232, 0.3)',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                    flexShrink: 0,
+                  }}
+                />
+                <span>
+                  <strong className="text-dark">{fullName(dentist)}</strong>
+                  {dentist.specialization ? ` · ${dentist.specialization}` : ''}
+                </span>
+              </li>
+            ) : (
+              <li>
+                <PersonBadge aria-hidden="true" />
+                {fullName(dentist)}
+                {dentist.specialization ? ` · ${dentist.specialization}` : ''}
+              </li>
+            )
           )}
           {showPatient && patient && (
             <li>

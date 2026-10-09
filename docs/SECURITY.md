@@ -21,7 +21,8 @@ helmet → cors → express.json(10kb) → mongoSanitize → (morgan, dev only) 
 | **Password policy** | `src/validators/common.js` (`passwordRule`) | 8–64 characters with uppercase, lowercase and a digit. Checked on the server, because the client can be bypassed. |
 | **JWT (stateless sessions)** | `src/utils/generateToken.js` | Signed with `JWT_SECRET` (64 random bytes), expires after `JWT_EXPIRES_IN` (1 day). The payload contains only `{ id, role }`, so no personal data. |
 | **Generic login error** | `src/controllers/auth.controller.js` (`login`) | Unknown email and wrong password both return `401 "Invalid email or password"`, so attackers cannot find out which emails are registered. |
-| **Change password requires current password** | `src/controllers/user.controller.js` (`changePassword`) | A stolen, still-valid token alone is not enough to take over the account permanently. |
+| **Change password requires current password** | `src/controllers/user.controller.js` (`changePassword`) | A stolen, still-valid token alone is not enough to take over the account permanently. Clears failed attempts counter. |
+| **5-Attempt Account Lockout (60s timer)** | `src/models/User.js`, `src/controllers/auth.controller.js` (`login`) | After 5 consecutive failed passwords, the account is temporarily locked for 60 seconds (HTTP 423 Locked) with live timer countdown. Successful login resets the counter. |
 
 ## 2. Authorization
 
@@ -55,7 +56,7 @@ helmet → cors → express.json(10kb) → mongoSanitize → (morgan, dev only) 
 | **Helmet** | `src/app.js` | Sets secure HTTP headers: Content-Security-Policy, `X-Content-Type-Options: nosniff`, `X-Frame-Options` (clickjacking), HSTS, `Referrer-Policy`, and removes `X-Powered-By`. |
 | **CORS whitelist** | `src/app.js` | Only origins listed in `CLIENT_URL` (comma-separated) may call the API from a browser. `credentials: false`, because the token is sent in a header, not a cookie. |
 | **Body size limit (10 kb)** | `src/app.js` (`express.json({ limit: '10kb' })`) | Prevents memory exhaustion with huge payloads (returns 413). |
-| **Rate limiting** | `src/middleware/rateLimiters.js` | `apiLimiter`: 300 requests / 15 min / IP on all `/api` routes. `authLimiter`: **10 requests / 15 min / IP** shared by login and register, to slow down brute-force and credential-stuffing attacks. Returns 429 with the standard error envelope. |
+| **Rate limiting** | `src/middleware/rateLimiters.js` | `apiLimiter`: 300 requests / 15 min / IP on all `/api` routes. `authLimiter`: 10 requests / 15 min / IP for registration & OTP. `loginLimiter`: **5 attempts / 60 sec / IP** specifically for login, protecting against credential-stuffing and automated attacks. Returns 429 with standard error envelope and Retry-After. |
 | **`trust proxy` in production** | `src/app.js` | On Render the app runs behind a proxy, so the real client IP comes from `X-Forwarded-For`. Without this, every user would share one rate-limit bucket. |
 
 ## 5. Error handling & information leakage

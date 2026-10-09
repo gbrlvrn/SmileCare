@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Alert, Button, Col, Row } from 'react-bootstrap';
 import {
+  Award,
   CalendarEvent,
   Clock,
+  Envelope,
   ExclamationTriangle,
   InfoCircle,
   JournalMedical,
@@ -12,7 +14,7 @@ import {
 } from 'react-bootstrap-icons';
 import { getAppointment } from '../../api/appointmentApi';
 import EmptyState from '../../components/EmptyState';
-import Loader from '../../components/Loader';
+import AppointmentDetailSkeleton from '../../components/skeletons/AppointmentDetailSkeleton';
 import PageHeader from '../../components/PageHeader';
 import StatusBadge from '../../components/StatusBadge';
 import CancelAppointmentModal from '../../components/patient/CancelAppointmentModal';
@@ -23,6 +25,7 @@ import {
   changeBlockedReason,
   dentistLabel,
   serviceLabel,
+  servicesLabel,
 } from '../../components/patient/appointmentRules';
 import useFetch from '../../hooks/useFetch';
 import {
@@ -32,6 +35,7 @@ import {
   formatDuration,
   formatTimeRange,
 } from '../../utils/formatters';
+import { getDentistPortrait } from '../../utils/dentistImages';
 import '../../components/patient/patient.css';
 
 export default function AppointmentDetail() {
@@ -45,7 +49,7 @@ export default function AppointmentDetail() {
   const [showCancel, setShowCancel] = useState(false);
 
   if (loading) {
-    return <Loader fullPage label="Loading appointment details..." />;
+    return <AppointmentDetailSkeleton />;
   }
 
   if (error || !appointment) {
@@ -63,8 +67,19 @@ export default function AppointmentDetail() {
     );
   }
 
-  const { service, dentist, status, date, startTime, endTime, reason, cancellationReason, treatment, createdAt } =
-    appointment;
+  const {
+    service,
+    services,
+    dentist,
+    status,
+    date,
+    startTime,
+    endTime,
+    reason,
+    cancellationReason,
+    treatment,
+    createdAt,
+  } = appointment;
 
   const editable = canPatientChange(appointment);
   const blockedNotice = changeBlockedReason(appointment);
@@ -72,7 +87,7 @@ export default function AppointmentDetail() {
   return (
     <div>
       <PageHeader
-        title={serviceLabel(service)}
+        title={servicesLabel(appointment)}
         subtitle={`Scheduled on ${formatDate(date, { weekday: 'long' })}`}
         backTo="/patient/appointments"
         backLabel="Back to appointments"
@@ -144,19 +159,62 @@ export default function AppointmentDetail() {
             </div>
 
             <h3 className="h6 fw-bold text-primary mb-3">Service details</h3>
-            <dl className="row small mb-4">
-              <dt className="col-sm-4 text-muted">Service name</dt>
-              <dd className="col-sm-8 fw-semibold">{serviceLabel(service)}</dd>
+            {services && services.length > 1 ? (
+              <div className="mb-4">
+                <div className="table-responsive mb-2">
+                  <table className="table table-sm table-bordered align-middle small mb-0 bg-white">
+                    <thead className="table-light">
+                      <tr>
+                        <th style={{ width: 40 }} className="text-center">#</th>
+                        <th>Dental service</th>
+                        <th>Duration</th>
+                        <th className="text-end">Estimated fee</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {services.map((s, idx) => (
+                        <tr key={s._id || idx}>
+                          <td className="text-muted text-center">{idx + 1}</td>
+                          <td>
+                            <div className="fw-semibold text-body">{s.name}</div>
+                            {s.description && (
+                              <div className="text-muted" style={{ fontSize: '0.78rem' }}>
+                                {s.description}
+                              </div>
+                            )}
+                          </td>
+                          <td className="text-muted">{formatDuration(s.durationMinutes || 0)}</td>
+                          <td className="text-end fw-semibold text-primary">{formatCurrency(s.price || 0)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="table-light fw-bold">
+                      <tr>
+                        <td colSpan={2} className="text-end">Total</td>
+                        <td>{formatDuration(services.reduce((acc, s) => acc + (s.durationMinutes || 0), 0))}</td>
+                        <td className="text-end text-primary fs-6">
+                          {formatCurrency(services.reduce((acc, s) => acc + (s.price || 0), 0))}
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              <dl className="row small mb-4">
+                <dt className="col-sm-4 text-muted">Service name</dt>
+                <dd className="col-sm-8 fw-semibold">{serviceLabel(service)}</dd>
 
-              <dt className="col-sm-4 text-muted">Description</dt>
-              <dd className="col-sm-8 text-muted">{service?.description || 'Standard clinic dental treatment.'}</dd>
+                <dt className="col-sm-4 text-muted">Description</dt>
+                <dd className="col-sm-8 text-muted">{service?.description || 'Standard clinic dental treatment.'}</dd>
 
-              <dt className="col-sm-4 text-muted">Duration</dt>
-              <dd className="col-sm-8">{formatDuration(service?.durationMinutes || 30)}</dd>
+                <dt className="col-sm-4 text-muted">Duration</dt>
+                <dd className="col-sm-8">{formatDuration(service?.durationMinutes || 30)}</dd>
 
-              <dt className="col-sm-4 text-muted">Estimated fee</dt>
-              <dd className="col-sm-8 fw-bold text-primary">{formatCurrency(service?.price || 0)}</dd>
-            </dl>
+                <dt className="col-sm-4 text-muted">Estimated fee</dt>
+                <dd className="col-sm-8 fw-bold text-primary">{formatCurrency(service?.price || 0)}</dd>
+              </dl>
+            )}
 
             <h3 className="h6 fw-bold text-primary mb-3">Patient visit notes</h3>
             <div className="p-3 bg-light rounded border text-muted small">
@@ -185,27 +243,65 @@ export default function AppointmentDetail() {
 
         {/* Sidebar: Dentist Info */}
         <Col lg={4}>
-          <div className="sc-card p-4 mb-4">
-            <h3 className="h6 fw-bold mb-3 d-flex align-items-center gap-2">
-              <PersonBadge className="text-primary" />
-              Attending Dentist
-            </h3>
+          <div className="sc-card p-4 mb-4 sc-attending-dentist-card shadow-sm">
+            <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+              <h3 className="h6 fw-bold mb-0 d-flex align-items-center gap-2 text-dark">
+                <PersonBadge className="text-primary" />
+                Attending Dentist
+              </h3>
+              <span className="badge bg-primary-subtle text-primary border border-primary-subtle rounded-pill px-2.5 py-1" style={{ fontSize: '0.72rem' }}>
+                Assigned
+              </span>
+            </div>
 
             {dentist ? (
-              <div>
-                <h4 className="h5 fw-bold mb-1">{dentistLabel(dentist)}</h4>
-                <div className="badge bg-primary-subtle text-primary mb-3">
+              <div className="text-center pt-2">
+                <div className="position-relative d-inline-block mb-3">
+                  <img
+                    src={getDentistPortrait(dentist)}
+                    alt={dentistLabel(dentist)}
+                    className="sc-dentist-portrait rounded-circle object-fit-cover"
+                    style={{
+                      width: '112px',
+                      height: '112px',
+                      border: '3px solid #fff',
+                      boxShadow: '0 6px 18px rgba(30, 111, 232, 0.2)',
+                    }}
+                  />
+                  <span
+                    className="position-absolute bottom-0 end-0 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                    style={{ width: '26px', height: '26px', border: '2px solid #fff' }}
+                    title="Licensed Dental Professional"
+                  >
+                    <Award size={14} />
+                  </span>
+                </div>
+
+                <h4 className="h5 fw-bold mb-1 text-dark">{dentistLabel(dentist)}</h4>
+                <div className="badge bg-primary-subtle text-primary mb-3 px-3 py-1 rounded-pill" style={{ fontSize: '0.8rem', fontWeight: 600 }}>
                   {dentist.specialization || 'General Dentistry'}
                 </div>
 
-                <div className="small text-muted mb-3">{dentist.bio}</div>
-
-                {dentist.phone && (
-                  <div className="small d-flex align-items-center gap-2 text-muted mb-2">
-                    <Telephone className="text-primary" />
-                    <span>{dentist.phone}</span>
+                {dentist.bio && (
+                  <div className="sc-dentist-bio text-start small text-muted mb-3 p-3 rounded-3 bg-light border">
+                    {dentist.bio}
                   </div>
                 )}
+
+                <div className="d-flex flex-column gap-2 text-start pt-2 border-top mt-3">
+                  {dentist.phone && (
+                    <div className="small d-flex align-items-center gap-2 text-secondary">
+                      <Telephone className="text-primary flex-shrink-0" />
+                      <span>{dentist.phone}</span>
+                    </div>
+                  )}
+                  {dentist.email && (
+                    <div className="small d-flex align-items-center gap-2 text-secondary">
+                      <Envelope className="text-primary flex-shrink-0" />
+                      <span className="text-truncate">{dentist.email}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <p className="text-muted small mb-0">Dentist details are no longer available in the system.</p>

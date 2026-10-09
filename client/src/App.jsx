@@ -1,5 +1,4 @@
-import { Route, Routes } from 'react-router-dom';
-import AuthLayout from './layouts/AuthLayout';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import DashboardLayout from './layouts/DashboardLayout';
 import PublicLayout from './layouts/PublicLayout';
 import GuestRoute from './routes/GuestRoute';
@@ -7,9 +6,7 @@ import ProtectedRoute from './routes/ProtectedRoute';
 import RoleRoute from './routes/RoleRoute';
 
 import Landing from './pages/public/Landing';
-import Login from './pages/public/Login';
 import NotFound from './pages/public/NotFound';
-import Register from './pages/public/Register';
 import Profile from './pages/shared/Profile';
 
 import PatientAppointmentDetail from './pages/patient/AppointmentDetail';
@@ -41,12 +38,10 @@ export default function App() {
         <Route index element={<Landing />} />
       </Route>
 
-      {/* Guests only: split-screen auth pages */}
+      {/* Guests only: redirects to modal popup on home page */}
       <Route element={<GuestRoute />}>
-        <Route element={<AuthLayout />}>
-          <Route path="login" element={<Login />} />
-          <Route path="register" element={<Register />} />
-        </Route>
+        <Route path="login" element={<Navigate to="/?auth=login" replace />} />
+        <Route path="register" element={<Navigate to="/?auth=register" replace />} />
       </Route>
 
       <Route element={<ProtectedRoute />}>

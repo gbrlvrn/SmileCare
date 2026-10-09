@@ -18,6 +18,8 @@ export default function PasswordInput({
   label,
   name,
   error,
+  isValid,
+  isInvalid,
   helpText,
   required = false,
   id,
@@ -33,6 +35,9 @@ export default function PasswordInput({
     [error ? feedbackId : null, helpText && !error ? helpId : null, extraDescribedBy]
       .filter(Boolean)
       .join(' ') || undefined;
+
+  const resolvedIsInvalid = isInvalid !== undefined ? isInvalid : Boolean(error);
+  const resolvedIsValid = isValid !== undefined ? isValid : false;
 
   return (
     <Form.Group className={groupClassName} controlId={controlId}>
@@ -50,8 +55,9 @@ export default function PasswordInput({
         <Form.Control
           type={visible ? 'text' : 'password'}
           name={name}
-          isInvalid={Boolean(error)}
-          aria-invalid={error ? true : undefined}
+          isInvalid={resolvedIsInvalid}
+          isValid={resolvedIsValid}
+          aria-invalid={resolvedIsInvalid ? true : undefined}
           aria-required={required || undefined}
           aria-describedby={describedBy}
           {...rest}

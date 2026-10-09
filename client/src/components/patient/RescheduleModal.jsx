@@ -14,7 +14,7 @@ import {
   todayISO,
   weekdayOf,
 } from '../../utils/formatters';
-import { dentistLabel, serviceLabel } from './appointmentRules';
+import { dentistLabel, serviceLabel, servicesLabel } from './appointmentRules';
 import useAvailability from './useAvailability';
 
 /** How far ahead patients can book or move an appointment. */
@@ -45,6 +45,7 @@ export default function RescheduleModal({ appointment, onClose, onRescheduled })
   const availability = useAvailability({
     dentistId: dentist?._id,
     serviceId: service?._id,
+    serviceIds: appointment.services?.map((s) => s._id),
     date,
     excludeAppointmentId: appointment._id,
   });
@@ -119,7 +120,7 @@ export default function RescheduleModal({ appointment, onClose, onRescheduled })
         </Modal.Header>
         <Modal.Body>
           <div className="sc-note-box mb-3">
-            <div className="fw-semibold">{serviceLabel(service)}</div>
+            <div className="fw-semibold">{servicesLabel(appointment)}</div>
             <div className="text-muted small">
               with {dentistLabel(dentist)} · currently {formatDate(appointment.date, { weekday: 'short' })},{' '}
               {formatTimeRange(appointment.startTime, appointment.endTime)}
