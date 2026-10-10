@@ -6,6 +6,12 @@ const nodemailer = require('nodemailer');
  */
 let transporter = null;
 
+const timeoutOptions = {
+  connectionTimeout: 5000, // 5s connection timeout (prevents hanging if host blocks SMTP)
+  greetingTimeout: 5000,
+  socketTimeout: 5000,
+};
+
 function getTransporter() {
   if (transporter) return transporter;
 
@@ -23,7 +29,7 @@ function getTransporter() {
   const cleanUser = user.trim();
   const cleanPass = pass.replace(/\s+/g, ''); // Handles Google App Passwords copied with spaces
 
-  // Gmail: use smtp.gmail.com with SSL (port 465) for highest reliability
+  // Gmail: use smtp.gmail.com with SSL (port 465)
   if (service === 'gmail' || (!host && cleanUser.toLowerCase().endsWith('@gmail.com'))) {
     transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com',
@@ -33,11 +39,13 @@ function getTransporter() {
         user: cleanUser,
         pass: cleanPass,
       },
+      ...timeoutOptions,
     });
   } else if (service === 'yahoo' || (!host && cleanUser.toLowerCase().endsWith('@yahoo.com'))) {
     transporter = nodemailer.createTransport({
       service: 'yahoo',
       auth: { user: cleanUser, pass: cleanPass },
+      ...timeoutOptions,
     });
   } else if (
     service === 'hotmail' ||
@@ -47,6 +55,7 @@ function getTransporter() {
     transporter = nodemailer.createTransport({
       service: 'hotmail',
       auth: { user: cleanUser, pass: cleanPass },
+      ...timeoutOptions,
     });
   } else if (host) {
     transporter = nodemailer.createTransport({
@@ -54,10 +63,42 @@ function getTransporter() {
       port,
       secure,
       auth: { user: cleanUser, pass: cleanPass },
+      ...timeoutOptions,
     });
   }
 
   return transporter;
+}
+
+/**
+ * Sends email via Resend REST API (HTTPS port 443).
+ * Ideal for cloud platforms like Render Free Tier that block outbound SMTP ports (25, 465, 587).
+ */
+async function sendViaResend({ to, firstName, otp, expiresInMinutes, fromAddress, subject, html }) {
+  const resendFrom = process.env.RESEND_FROM || process.env.EMAIL_FROM || 'SmileCare <onboarding@resend.dev>';
+  const response = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      from: resendFrom,
+      to: [to],
+      subject,
+      html,
+      text: `Hello ${firstName},\n\nYour SmileCare verification code is: ${otp}\n\nThis code will expire in ${expiresInMinutes} minutes.\n\nThank you,\nSmileCare Dental Clinic`,
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Resend API HTTP ${response.status}: ${errText}`);
+  }
+
+  const data = await response.json();
+  console.log(`[EmailService] OTP email successfully sent via Resend API to ${to} (ID: ${data.id})`);
+  return { success: true, messageId: data.id };
 }
 
 /**
@@ -147,6 +188,24 @@ async function sendOtpEmail({ to, firstName, otp, expiresInMinutes = 10 }) {
     </html>
   `;
 
+  // 1. Try Resend API (HTTPS port 443) if RESEND_API_KEY is configured
+  if (process.env.RESEND_API_KEY) {
+    try {
+      return await sendViaResend({
+        to,
+        firstName,
+        otp,
+        expiresInMinutes,
+        fromAddress,
+        subject,
+        html,
+      });
+    } catch (err) {
+      console.error(`[EmailService] Resend API dispatch failed: ${err.message}. Trying SMTP fallback...`);
+    }
+  }
+
+  // 2. Try SMTP transporter (Gmail / Custom SMTP)
   const transport = getTransporter();
 
   if (transport) {
@@ -161,16 +220,16 @@ async function sendOtpEmail({ to, firstName, otp, expiresInMinutes = 10 }) {
       console.log(`[EmailService] OTP email successfully sent to ${to} (Message ID: ${info.messageId})`);
       return { success: true, messageId: info.messageId };
     } catch (err) {
-      console.error(`[EmailService] Failed to send email to ${to}:`, err.message);
+      console.error(`[EmailService] Failed to send email via SMTP to ${to}:`, err.message);
       throw new Error(`Failed to deliver verification email: ${err.message}`);
     }
   }
 
   console.error(
-    `[EmailService] ERROR: No email credentials found in server/.env. Cannot deliver email to ${to}.`
+    `[EmailService] ERROR: No email credentials found (RESEND_API_KEY or EMAIL_USER/EMAIL_PASS). Cannot deliver email to ${to}.`
   );
   throw new Error(
-    'Email delivery failed: Email credentials are not configured on the server. Please set EMAIL_USER and EMAIL_PASS in server/.env.'
+    'Email delivery failed: Email credentials are not configured on the server. Please set RESEND_API_KEY or EMAIL_USER and EMAIL_PASS.'
   );
 }
 

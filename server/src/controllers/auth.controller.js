@@ -38,22 +38,32 @@ const requestRegistrationOtp = asyncHandler(async (req, res) => {
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 
-  // Send branded OTP email
-  await sendOtpEmail({
-    to: cleanEmail,
-    firstName: data.firstName,
-    otp,
-    expiresInMinutes: 10,
-  });
+  // Send branded OTP email with non-blocking fallback if hosting provider blocks SMTP
+  let emailSent = false;
+  try {
+    await sendOtpEmail({
+      to: cleanEmail,
+      firstName: data.firstName,
+      otp,
+      expiresInMinutes: 10,
+    });
+    emailSent = true;
+  } catch (err) {
+    console.error(`[Auth] Could not send OTP email to ${cleanEmail}: ${err.message}`);
+    console.warn(`[Auth] The verification code for ${cleanEmail} is recorded above. Proceeding to allow verification.`);
+  }
 
   sendSuccess(
     res,
     {
       email: cleanEmail,
       expiresIn: 600,
+      emailSent,
     },
     {
-      message: 'A 6-digit verification code has been sent to your email.',
+      message: emailSent
+        ? 'A 6-digit verification code has been sent to your email.'
+        : 'Verification code generated. (If email delivery is delayed or blocked by free hosting, check server logs).',
     }
   );
 });
@@ -140,21 +150,31 @@ const resendRegistrationOtp = asyncHandler(async (req, res) => {
   pending.expiresAt = new Date(Date.now() + 10 * 60 * 1000);
   await pending.save();
 
-  await sendOtpEmail({
-    to: cleanEmail,
-    firstName: pending.userData.firstName,
-    otp,
-    expiresInMinutes: 10,
-  });
+  let emailSent = false;
+  try {
+    await sendOtpEmail({
+      to: cleanEmail,
+      firstName: pending.userData.firstName,
+      otp,
+      expiresInMinutes: 10,
+    });
+    emailSent = true;
+  } catch (err) {
+    console.error(`[Auth] Could not resend OTP email to ${cleanEmail}: ${err.message}`);
+    console.warn(`[Auth] The new verification code for ${cleanEmail} is recorded above.`);
+  }
 
   sendSuccess(
     res,
     {
       email: cleanEmail,
       expiresIn: 600,
+      emailSent,
     },
     {
-      message: 'A new 6-digit verification code has been sent to your email.',
+      message: emailSent
+        ? 'A new 6-digit verification code has been sent to your email.'
+        : 'A new verification code was generated. Check server logs if email delivery is blocked.',
     }
   );
 });
