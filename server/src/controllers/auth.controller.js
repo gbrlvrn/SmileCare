@@ -59,11 +59,12 @@ const requestRegistrationOtp = asyncHandler(async (req, res) => {
       email: cleanEmail,
       expiresIn: 600,
       emailSent,
+      ...(!emailSent && { devOtp: otp }),
     },
     {
       message: emailSent
         ? 'A 6-digit verification code has been sent to your email.'
-        : 'Verification code generated. (If email delivery is delayed or blocked by free hosting, check server logs).',
+        : `Verification code generated: ${otp}`,
     }
   );
 });
@@ -170,11 +171,12 @@ const resendRegistrationOtp = asyncHandler(async (req, res) => {
       email: cleanEmail,
       expiresIn: 600,
       emailSent,
+      ...(!emailSent && { devOtp: otp }),
     },
     {
       message: emailSent
         ? 'A new 6-digit verification code has been sent to your email.'
-        : 'A new verification code was generated. Check server logs if email delivery is blocked.',
+        : `A new verification code was generated: ${otp}`,
     }
   );
 });

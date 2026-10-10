@@ -61,6 +61,7 @@ export default function AuthModal({ show, mode = 'login', setMode, onHide, redir
 
   const [regStep, setRegStep] = useState('form'); // 'form' | 'otp'
   const [pendingEmail, setPendingEmail] = useState('');
+  const [regDevOtp, setRegDevOtp] = useState('');
   const [lockoutSeconds, setLockoutSeconds] = useState(0);
   const [totalLockout, setTotalLockout] = useState(60);
   const wasLockedRef = useRef(false);
@@ -129,8 +130,9 @@ export default function AuthModal({ show, mode = 'login', setMode, onHide, redir
     realtime: true,
     onSubmit: async (values) => {
       const payload = toRegisterPayload(values);
-      await requestRegistrationOtp(payload);
+      const res = await requestRegistrationOtp(payload);
       setPendingEmail(payload.email);
+      setRegDevOtp(res?.data?.devOtp || '');
       setRegStep('otp');
     },
   });
@@ -198,6 +200,7 @@ export default function AuthModal({ show, mode = 'login', setMode, onHide, redir
               {regStep === 'otp' ? (
                 <OtpVerification
                   email={pendingEmail}
+                  devOtp={regDevOtp}
                   onVerify={async (code) => {
                     const user = await verifyRegistrationOtp(pendingEmail, code);
                     showToast({ type: 'success', message: `Welcome to SmileCare, ${user.firstName}!` });
@@ -207,7 +210,9 @@ export default function AuthModal({ show, mode = 'login', setMode, onHide, redir
                     navigate(target, { replace: true });
                   }}
                   onResend={async () => {
-                    return resendRegistrationOtp(pendingEmail);
+                    const res = await resendRegistrationOtp(pendingEmail);
+                    if (res?.data?.devOtp) setRegDevOtp(res.data.devOtp);
+                    return res;
                   }}
                   onBack={() => {
                     setRegStep('form');
