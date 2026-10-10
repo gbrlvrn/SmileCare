@@ -28,6 +28,8 @@ services:
         sync: false
       - key: EMAIL_FROM
         sync: false
+      - key: GMAIL_WEBHOOK_URL
+        sync: false
       - key: RESEND_API_KEY
         sync: false
       - key: BREVO_API_KEY

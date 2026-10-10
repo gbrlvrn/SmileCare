@@ -144,6 +144,36 @@ async function sendViaBrevo({ to, firstName, otp, expiresInMinutes, subject, htm
 }
 
 /**
+ * Sends email via a free Google Apps Script Webhook (HTTPS port 443).
+ * Uses your personal Gmail to deliver to ANY recipient email worldwide.
+ * 100% free forever, no domain required, no credit card required.
+ */
+async function sendViaGoogleAppsScript({ to, firstName, otp, expiresInMinutes, subject, html }) {
+  const url = process.env.GMAIL_WEBHOOK_URL?.trim();
+  if (!url) return null;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      to: to.trim(),
+      subject,
+      html,
+      firstName,
+      otp,
+      expiresInMinutes,
+    }),
+    redirect: 'follow',
+  });
+
+  const text = await response.text();
+  console.log(`[EmailService] OTP email sent via Google Apps Script to ${to}: ${text}`);
+  return { success: true };
+}
+
+/**
  * Sends a 6-digit registration OTP email to the user.
  *
  * @param {object} params
@@ -230,7 +260,24 @@ async function sendOtpEmail({ to, firstName, otp, expiresInMinutes = 10 }) {
     </html>
   `;
 
-  // 1. Try Brevo REST API (HTTPS port 443) - sends to ANY recipient email without requiring a custom domain!
+  // 1. Try Google Apps Script Webhook (Free, uses your personal Gmail, sends to ANY recipient without a domain!)
+  if (process.env.GMAIL_WEBHOOK_URL) {
+    try {
+      return await sendViaGoogleAppsScript({
+        to,
+        firstName,
+        otp,
+        expiresInMinutes,
+        subject,
+        html,
+      });
+    } catch (err) {
+      console.error(`[EmailService] Google Apps Script dispatch failed: ${err.message}. Trying fallbacks...`);
+      throw new Error(`Failed to deliver verification email via Gmail: ${err.message}`);
+    }
+  }
+
+  // 2. Try Brevo REST API (HTTPS port 443) - sends to ANY recipient email without requiring a custom domain!
   if (process.env.BREVO_API_KEY) {
     try {
       return await sendViaBrevo({
