@@ -10,7 +10,6 @@ export default function OtpVerification({
   onVerify,
   onResend,
   onBack,
-  devOtp: initialDevOtp = '',
 }) {
   const [digits, setDigits] = useState(['', '', '', '', '', '']);
   const [timer, setTimer] = useState(60);
@@ -18,7 +17,6 @@ export default function OtpVerification({
   const [resending, setResending] = useState(false);
   const [error, setError] = useState('');
   const [infoMessage, setInfoMessage] = useState('');
-  const [currentDevOtp, setCurrentDevOtp] = useState(initialDevOtp);
 
   const inputRefs = useRef([]);
 
@@ -134,10 +132,7 @@ export default function OtpVerification({
       setTimer(60);
       setDigits(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
-      if (res?.data?.devOtp) {
-        setCurrentDevOtp(res.data.devOtp);
-      }
-      setInfoMessage('A fresh 6-digit verification code has been generated!');
+      setInfoMessage('A fresh 6-digit verification code has been sent!');
     } catch (err) {
       setError(
         err?.response?.data?.message ||
@@ -200,30 +195,6 @@ export default function OtpVerification({
           {infoMessage}
         </Alert>
       )}
-
-      {currentDevOtp && (
-        <Alert variant="warning" className="small py-2 mb-3 text-start">
-          <div className="d-flex justify-content-between align-items-center">
-            <div>
-              <span className="fw-bold">Evaluation Code: </span>
-              <strong className="text-primary fs-6 font-monospace ms-1">{currentDevOtp}</strong>
-            </div>
-            <Button
-              variant="outline-primary"
-              size="sm"
-              className="py-0 px-2 text-nowrap ms-2"
-              onClick={() => {
-                const next = currentDevOtp.split('').slice(0, 6);
-                setDigits(next);
-                inputRefs.current[5]?.focus();
-              }}
-            >
-              Fill Code
-            </Button>
-          </div>
-        </Alert>
-      )}
-
 
       <form onSubmit={handleSubmit} noValidate>
         {/* 6 Digit Inputs */}

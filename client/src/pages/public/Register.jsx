@@ -52,16 +52,14 @@ export default function Register() {
 
   const [step, setStep] = useState('form');
   const [pendingEmail, setPendingEmail] = useState('');
-  const [devOtp, setDevOtp] = useState('');
 
   const form = useForm({
     initialValues: INITIAL_VALUES,
     validate: validateRegister,
     onSubmit: async (values) => {
       const payload = toPayload(values);
-      const res = await requestRegistrationOtp(payload);
+      await requestRegistrationOtp(payload);
       setPendingEmail(payload.email);
-      setDevOtp(res?.data?.devOtp || '');
       setStep('otp');
     },
   });
@@ -71,17 +69,12 @@ export default function Register() {
       <div className="sc-auth-form-wrap">
         <OtpVerification
           email={pendingEmail}
-          devOtp={devOtp}
           onVerify={async (code) => {
             const user = await verifyRegistrationOtp(pendingEmail, code);
             showToast({ type: 'success', message: `Welcome to SmileCare, ${user.firstName}!` });
             navigate(getPostLoginPath(user, location.state?.from), { replace: true });
           }}
-          onResend={async () => {
-            const res = await resendRegistrationOtp(pendingEmail);
-            if (res?.data?.devOtp) setDevOtp(res.data.devOtp);
-            return res;
-          }}
+          onResend={() => resendRegistrationOtp(pendingEmail)}
           onBack={() => setStep('form')}
         />
       </div>

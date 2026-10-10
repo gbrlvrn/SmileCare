@@ -38,33 +38,22 @@ const requestRegistrationOtp = asyncHandler(async (req, res) => {
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 
-  // Send branded OTP email with non-blocking fallback if hosting provider blocks SMTP
-  let emailSent = false;
-  try {
-    await sendOtpEmail({
-      to: cleanEmail,
-      firstName: data.firstName,
-      otp,
-      expiresInMinutes: 10,
-    });
-    emailSent = true;
-  } catch (err) {
-    console.error(`[Auth] Could not send OTP email to ${cleanEmail}: ${err.message}`);
-    console.warn(`[Auth] The verification code for ${cleanEmail} is recorded above. Proceeding to allow verification.`);
-  }
+  // Send branded OTP email
+  await sendOtpEmail({
+    to: cleanEmail,
+    firstName: data.firstName,
+    otp,
+    expiresInMinutes: 10,
+  });
 
   sendSuccess(
     res,
     {
       email: cleanEmail,
       expiresIn: 600,
-      emailSent,
-      ...(!emailSent && { devOtp: otp }),
     },
     {
-      message: emailSent
-        ? 'A 6-digit verification code has been sent to your email.'
-        : `Verification code generated: ${otp}`,
+      message: 'A 6-digit verification code has been sent to your email.',
     }
   );
 });
@@ -151,32 +140,21 @@ const resendRegistrationOtp = asyncHandler(async (req, res) => {
   pending.expiresAt = new Date(Date.now() + 10 * 60 * 1000);
   await pending.save();
 
-  let emailSent = false;
-  try {
-    await sendOtpEmail({
-      to: cleanEmail,
-      firstName: pending.userData.firstName,
-      otp,
-      expiresInMinutes: 10,
-    });
-    emailSent = true;
-  } catch (err) {
-    console.error(`[Auth] Could not resend OTP email to ${cleanEmail}: ${err.message}`);
-    console.warn(`[Auth] The new verification code for ${cleanEmail} is recorded above.`);
-  }
+  await sendOtpEmail({
+    to: cleanEmail,
+    firstName: pending.userData.firstName,
+    otp,
+    expiresInMinutes: 10,
+  });
 
   sendSuccess(
     res,
     {
       email: cleanEmail,
       expiresIn: 600,
-      emailSent,
-      ...(!emailSent && { devOtp: otp }),
     },
     {
-      message: emailSent
-        ? 'A new 6-digit verification code has been sent to your email.'
-        : `A new verification code was generated: ${otp}`,
+      message: 'A new 6-digit verification code has been sent to your email.',
     }
   );
 });

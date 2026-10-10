@@ -102,6 +102,48 @@ async function sendViaResend({ to, firstName, otp, expiresInMinutes, fromAddress
 }
 
 /**
+ * Sends email via Brevo REST API (HTTPS port 443).
+ * Ideal for cloud platforms like Render Free Tier: sends to ANY recipient email without requiring a custom domain.
+ */
+async function sendViaBrevo({ to, firstName, otp, expiresInMinutes, subject, html }) {
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_USER || 'gabrielvarona06@gmail.com';
+  const senderName = process.env.BREVO_SENDER_NAME || 'SmileCare Dental';
+
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'api-key': process.env.BREVO_API_KEY.trim(),
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({
+      sender: {
+        name: senderName,
+        email: senderEmail.trim(),
+      },
+      to: [
+        {
+          email: to.trim(),
+          name: firstName || 'Patient',
+        },
+      ],
+      subject,
+      htmlContent: html,
+      textContent: `Hello ${firstName},\n\nYour SmileCare verification code is: ${otp}\n\nThis code will expire in ${expiresInMinutes} minutes.\n\nThank you,\nSmileCare Dental Clinic`,
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Brevo API HTTP ${response.status}: ${errText}`);
+  }
+
+  const data = await response.json();
+  console.log(`[EmailService] OTP email successfully sent via Brevo API to ${to} (Message ID: ${data.messageId})`);
+  return { success: true, messageId: data.messageId };
+}
+
+/**
  * Sends a 6-digit registration OTP email to the user.
  *
  * @param {object} params
@@ -188,7 +230,24 @@ async function sendOtpEmail({ to, firstName, otp, expiresInMinutes = 10 }) {
     </html>
   `;
 
-  // 1. Try Resend API (HTTPS port 443) if RESEND_API_KEY is configured
+  // 1. Try Brevo REST API (HTTPS port 443) - sends to ANY recipient email without requiring a custom domain!
+  if (process.env.BREVO_API_KEY) {
+    try {
+      return await sendViaBrevo({
+        to,
+        firstName,
+        otp,
+        expiresInMinutes,
+        subject,
+        html,
+      });
+    } catch (err) {
+      console.error(`[EmailService] Brevo API dispatch failed: ${err.message}. Trying fallbacks...`);
+      throw new Error(`Failed to deliver verification email via Brevo: ${err.message}`);
+    }
+  }
+
+  // 2. Try Resend API (HTTPS port 443) if RESEND_API_KEY is configured
   if (process.env.RESEND_API_KEY) {
     try {
       return await sendViaResend({
@@ -202,6 +261,7 @@ async function sendOtpEmail({ to, firstName, otp, expiresInMinutes = 10 }) {
       });
     } catch (err) {
       console.error(`[EmailService] Resend API dispatch failed: ${err.message}. Trying SMTP fallback...`);
+      throw new Error(`Failed to deliver verification email via Resend: ${err.message}`);
     }
   }
 
