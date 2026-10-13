@@ -10,18 +10,21 @@ import App from './App.jsx';
 import { AuthProvider } from './context/AuthContext.jsx';
 import { AuthModalProvider } from './context/AuthModalContext.jsx';
 import { ToastProvider } from './context/ToastContext.jsx';
+import { ThemeProvider } from './context/ThemeContext.jsx';
 
-// Provider order: Router (AuthProvider uses useNavigate) → Toasts → Auth → AuthModal → App
+// Provider order: Theme → Router (AuthProvider uses useNavigate) → Toasts → Auth → AuthModal → App
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    <BrowserRouter>
-      <ToastProvider>
-        <AuthProvider>
-          <AuthModalProvider>
-            <App />
-          </AuthModalProvider>
-        </AuthProvider>
-      </ToastProvider>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <ToastProvider>
+          <AuthProvider>
+            <AuthModalProvider>
+              <App />
+            </AuthModalProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </BrowserRouter>
+    </ThemeProvider>
   </StrictMode>,
 );

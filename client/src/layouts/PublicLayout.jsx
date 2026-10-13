@@ -1,6 +1,7 @@
 import { Outlet } from 'react-router-dom';
 import PublicFooter from '../components/PublicFooter';
 import PublicNavbar from '../components/PublicNavbar';
+import PageTransition from '../components/PageTransition';
 
 /** Layout for public marketing pages: sticky navbar + page + footer. */
 export default function PublicLayout() {
@@ -11,7 +12,9 @@ export default function PublicLayout() {
       </a>
       <PublicNavbar />
       <main id="main-content">
-        <Outlet />
+        <PageTransition>
+          <Outlet />
+        </PageTransition>
       </main>
       <PublicFooter />
     </div>

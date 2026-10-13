@@ -1,7 +1,10 @@
-import { Button, Modal, Spinner } from 'react-bootstrap';
+import { Modal, Spinner } from 'react-bootstrap';
+import { XLg } from 'react-bootstrap-icons';
 
 /**
  * Confirmation dialog for destructive or important actions.
+ * Unified with the modern confirmation modal design language.
+ *
  * @param {object} props
  * @param {boolean} props.show
  * @param {string} [props.title='Are you sure?']
@@ -29,25 +32,60 @@ export default function ConfirmModal({
   confirmDisabled = false,
 }) {
   return (
-    <Modal show={show} onHide={loading ? undefined : onCancel} centered aria-labelledby="confirm-modal-title">
-      <Modal.Header closeButton={!loading}>
-        <Modal.Title id="confirm-modal-title" as="h2" className="h5">
+    <Modal
+      show={show}
+      onHide={loading ? undefined : onCancel}
+      centered
+      className="sc-signout-modal sc-confirm-modal"
+      backdropClassName="sc-signout-backdrop"
+      aria-labelledby="confirm-modal-title"
+    >
+      <div className="sc-signout-header-accent" aria-hidden="true" />
+
+      {!loading && (
+        <button
+          type="button"
+          className="sc-signout-close-btn"
+          onClick={onCancel}
+          aria-label="Close confirmation dialog"
+        >
+          <XLg size={13} aria-hidden="true" />
+        </button>
+      )}
+
+      <div className="sc-signout-body">
+        <h2 id="confirm-modal-title" className="sc-signout-title text-start mb-2">
           {title}
-        </Modal.Title>
-      </Modal.Header>
-      <Modal.Body>
-        {body && <div className="text-muted">{body}</div>}
+        </h2>
+
+        {body && <div className="sc-signout-desc text-start mb-3">{body}</div>}
+
         {children}
-      </Modal.Body>
-      <Modal.Footer>
-        <Button variant="light" onClick={onCancel} disabled={loading}>
-          {cancelText}
-        </Button>
-        <Button variant={variant} onClick={onConfirm} disabled={loading || confirmDisabled}>
-          {loading && <Spinner size="sm" animation="border" className="me-2" aria-hidden="true" />}
-          {confirmText}
-        </Button>
-      </Modal.Footer>
+
+        <div className="sc-signout-actions mt-4">
+          <button
+            type="button"
+            className="sc-signout-btn-cancel"
+            onClick={onCancel}
+            disabled={loading}
+          >
+            {cancelText}
+          </button>
+          <button
+            type="button"
+            className={
+              variant === 'danger'
+                ? 'sc-signout-btn-confirm'
+                : 'btn btn-primary rounded-3 px-3 py-2 fw-semibold'
+            }
+            onClick={onConfirm}
+            disabled={loading || confirmDisabled}
+          >
+            {loading && <Spinner size="sm" animation="border" className="me-2" aria-hidden="true" />}
+            {confirmText}
+          </button>
+        </div>
+      </div>
     </Modal>
   );
 }

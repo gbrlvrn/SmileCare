@@ -91,7 +91,7 @@ export default function PublicFooter() {
 
         <div className="sc-footer-bottom">
           <span>© {year} SmileCare Dental Clinic. All rights reserved.</span>
-          <span>Caring for smiles in Metro Manila.</span>
+          <span>Made by QuadTech</span>
         </div>
       </Container>
     </footer>

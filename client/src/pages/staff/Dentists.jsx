@@ -54,8 +54,6 @@ export default function StaffDentists() {
     setPage,
     search,
     setSearch,
-    filters,
-    setFilter,
     refetch,
   } = useListQuery(getDentists, {
     initialFilters: { all: 'true' },
@@ -321,15 +319,6 @@ export default function StaffDentists() {
               value={search}
               onChange={setSearch}
               placeholder="Search by dentist name or specialty..."
-            />
-          </Col>
-          <Col md={6} className="d-flex justify-content-md-end">
-            <Form.Check
-              type="switch"
-              id="show-all-dentists"
-              label="Include inactive dentists"
-              checked={filters.all === 'true'}
-              onChange={(e) => setFilter('all', e.target.checked ? 'true' : undefined)}
             />
           </Col>
         </Row>

@@ -1,6 +1,7 @@
 import { List } from 'react-bootstrap-icons';
 import { formatDate, todayISO } from '../utils/formatters';
 import NotificationDropdown from './NotificationDropdown';
+import ThemeToggle from './ThemeToggle';
 
 /**
  * Top bar of the dashboard: menu button (mobile), page title, today's date and notifications.
@@ -28,6 +29,7 @@ export default function Topbar({ title, onMenuClick }) {
         </span>
 
         <NotificationDropdown />
+        <ThemeToggle id="topbar-theme-toggle" className="sc-theme-toggle--topbar" />
       </div>
     </header>
   );

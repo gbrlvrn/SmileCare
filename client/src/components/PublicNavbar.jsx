@@ -4,6 +4,7 @@ import useAuth from '../hooks/useAuth';
 import useAuthModal from '../hooks/useAuthModal';
 import { getHomePath } from '../utils/redirect';
 import Logo from './Logo';
+import ThemeToggle from './ThemeToggle';
 
 /** Links to the sections of the landing page (plain anchors scroll to the section id). */
 const SECTION_LINKS = [
@@ -33,7 +34,7 @@ export default function PublicNavbar() {
               </Nav.Link>
             ))}
           </Nav>
-          <Nav className="align-items-lg-center gap-2">
+          <Nav className="flex-row align-items-center gap-3">
             {isAuthenticated ? (
               <Button as={Link} to={getHomePath(user)} variant="primary">
                 Go to dashboard
@@ -42,11 +43,13 @@ export default function PublicNavbar() {
               <Button
                 type="button"
                 variant="primary"
+                className="sc-nav-login"
                 onClick={() => openLogin()}
               >
                 Login
               </Button>
             )}
+            <ThemeToggle id="public-theme-toggle" />
           </Nav>
         </Navbar.Collapse>
       </Container>

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Offcanvas } from 'react-bootstrap';
 import { Outlet, useLocation } from 'react-router-dom';
+import PageTransition from '../components/PageTransition';
 import Sidebar from '../components/Sidebar';
 import SignOutConfirmModal from '../components/SignOutConfirmModal';
 import Topbar from '../components/Topbar';
@@ -103,7 +104,9 @@ export default function DashboardLayout() {
           onMenuClick={() => setShowMenu(true)}
         />
         <main className="sc-content" id="main-content">
-          <Outlet />
+          <PageTransition>
+            <Outlet />
+          </PageTransition>
         </main>
       </div>
 

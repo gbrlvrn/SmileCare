@@ -12,6 +12,7 @@ import {
 import StatusBadge from '../StatusBadge';
 import { canPatientChange, dentistLabel, serviceLabel } from './appointmentRules';
 import { formatDate, formatTimeRange, toInputDate, todayISO } from '../../utils/formatters';
+import './patient.css';
 
 const WEEKDAYS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 

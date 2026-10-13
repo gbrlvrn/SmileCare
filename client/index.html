@@ -9,6 +9,19 @@
       content="SmileCare Dental Clinic — book, reschedule and manage your dental appointments online."
     />
     <meta name="theme-color" content="#1E6FE8" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      // Apply the saved (or system) theme before first paint to avoid a flash.
+      (function () {
+        var s = null;
+        try { s = localStorage.getItem('sc_color_scheme'); } catch (e) {}
+        var t = s === 'light' || s === 'dark' ? s : (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        var r = document.documentElement;
+        r.setAttribute('data-theme', t);
+        r.setAttribute('data-bs-theme', t);
+        if (s === 'light' || s === 'dark') document.querySelector('meta[name="color-scheme"]').content = s;
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link

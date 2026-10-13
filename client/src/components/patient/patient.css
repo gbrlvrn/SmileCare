@@ -1292,5 +1292,276 @@
   box-shadow: 0 4px 14px rgba(30, 111, 232, 0.3), 0 0 0 2.5px var(--sc-primary, #1e6fe8);
 }
 
+/* ==========================================================================
+   Patient Calendar Tracker — Dark Mode Overrides
+   ========================================================================== */
+[data-theme='dark'] .sc-tracker-title {
+  color: var(--sc-text, #f1f5f9);
+}
+
+[data-theme='dark'] .sc-tracker-month-label {
+  color: var(--sc-text, #f1f5f9);
+}
+
+[data-theme='dark'] .sc-tracker-today-btn {
+  background: rgba(75, 141, 248, 0.16);
+  border-color: rgba(75, 141, 248, 0.35);
+  color: #93bbfb;
+}
+
+[data-theme='dark'] .sc-tracker-today-btn:hover {
+  background: var(--sc-primary, #4b8df8);
+  border-color: var(--sc-primary, #4b8df8);
+  color: #ffffff;
+}
+
+[data-theme='dark'] .sc-tracker-nav-btn {
+  background: var(--sc-surface-2, #16223b);
+  border-color: var(--sc-border, #24314b);
+  color: #cbd5e1;
+}
+
+[data-theme='dark'] .sc-tracker-nav-btn:hover {
+  background: rgba(75, 141, 248, 0.2);
+  border-color: var(--sc-primary, #4b8df8);
+  color: #93bbfb;
+}
+
+[data-theme='dark'] .sc-tracker-weekday {
+  color: #64748b;
+}
+
+/* Base day cell in dark mode */
+[data-theme='dark'] .sc-tracker-day {
+  color: var(--sc-text, #e2e8f0);
+}
+
+[data-theme='dark'] .sc-tracker-day:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+}
+
+[data-theme='dark'] .sc-tracker-day.is-outside {
+  color: #475569;
+}
+
+/* Past days without appointments: subtle dim slate instead of glaring white */
+[data-theme='dark'] .sc-tracker-day.is-past:not([class*='has-status-']) {
+  background: rgba(255, 255, 255, 0.03);
+  color: #64748b;
+  border-color: transparent;
+}
+
+[data-theme='dark'] .sc-tracker-day.is-past:not([class*='has-status-']):hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #94a3b8;
+}
+
+/* Today without appointments */
+[data-theme='dark'] .sc-tracker-day.is-today:not([class*='has-status-']) {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.5);
+}
+
+[data-theme='dark'] .sc-tracker-day.is-today:not([class*='has-status-']):hover {
+  background: #1d4ed8 !important;
+  border-color: #60a5fa !important;
+}
+
+/* Status colors in dark mode: rich, high-contrast tinted chips */
+[data-theme='dark'] .sc-tracker-day.has-status-confirmed {
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
+  border-color: rgba(16, 185, 129, 0.4);
+}
+
+[data-theme='dark'] .sc-tracker-day.has-status-confirmed:hover {
+  background: rgba(16, 185, 129, 0.3);
+  border-color: #34d399;
+  color: #a7f3d0;
+}
+
+[data-theme='dark'] .sc-tracker-day.has-status-pending {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fcd34d;
+  border-color: rgba(245, 158, 11, 0.4);
+}
+
+[data-theme='dark'] .sc-tracker-day.has-status-pending:hover {
+  background: rgba(245, 158, 11, 0.3);
+  border-color: #fbbf24;
+  color: #fef08a;
+}
+
+[data-theme='dark'] .sc-tracker-day.has-status-completed {
+  background: rgba(59, 130, 246, 0.18);
+  color: #93bbfb;
+  border-color: rgba(59, 130, 246, 0.4);
+}
+
+[data-theme='dark'] .sc-tracker-day.has-status-completed:hover {
+  background: rgba(59, 130, 246, 0.3);
+  border-color: #60a5fa;
+  color: #bfdbfe;
+}
+
+[data-theme='dark'] .sc-tracker-day.has-status-cancelled {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+[data-theme='dark'] .sc-tracker-day.has-status-cancelled:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #f87171;
+  color: #fecaca;
+}
+
+/* Today with appointments in dark mode */
+[data-theme='dark'] .sc-tracker-day.is-today.has-status-confirmed {
+  background: #059669 !important;
+  color: #ffffff !important;
+  border-color: #34d399 !important;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.5);
+}
+
+[data-theme='dark'] .sc-tracker-day.is-today.has-status-pending {
+  background: #d97706 !important;
+  color: #ffffff !important;
+  border-color: #fbbf24 !important;
+  box-shadow: 0 4px 14px rgba(245, 158, 11, 0.5);
+}
+
+[data-theme='dark'] .sc-tracker-day.is-today.has-status-completed {
+  background: #2563eb !important;
+  color: #ffffff !important;
+  border-color: #60a5fa !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.5);
+}
+
+[data-theme='dark'] .sc-tracker-day.is-today.has-status-cancelled {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+  border-color: #f87171 !important;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.5);
+}
+
+/* Selected states in dark mode */
+[data-theme='dark'] .sc-tracker-day.is-selected {
+  outline: 2px solid var(--sc-primary, #4b8df8);
+  outline-offset: 1px;
+}
+
+[data-theme='dark'] .sc-tracker-day.is-selected:not([class*='has-status-']) {
+  background: var(--sc-primary, #4b8df8) !important;
+  color: #ffffff !important;
+  border-color: var(--sc-primary, #4b8df8) !important;
+  box-shadow: 0 4px 14px rgba(75, 141, 248, 0.4);
+}
+
+[data-theme='dark'] .sc-tracker-day.is-past.is-selected:not([class*='has-status-']) {
+  background: #334155 !important;
+  color: #f1f5f9 !important;
+  border-color: #475569 !important;
+  outline-color: #64748b !important;
+}
+
+[data-theme='dark'] .sc-tracker-day.is-today.is-selected {
+  outline: 3px solid #93bbfb !important;
+  outline-offset: 2px;
+}
+
+[data-theme='dark'] .sc-tracker-day.is-today.is-selected:not([class*='has-status-']) {
+  background: #1d4ed8 !important;
+  box-shadow: 0 0 0 2px var(--sc-surface, #111a2e), 0 6px 20px rgba(37, 99, 235, 0.6) !important;
+}
+
+/* Legend in dark mode */
+[data-theme='dark'] .sc-tracker-legend {
+  border-color: var(--sc-border, #24314b);
+  color: var(--sc-muted, #94a3b8);
+}
+
+[data-theme='dark'] .sc-tracker-swatch--today {
+  background: #2563eb;
+  border-color: #3b82f6;
+}
+
+[data-theme='dark'] .sc-tracker-swatch--confirmed {
+  background: rgba(16, 185, 129, 0.3);
+  border-color: #10b981;
+}
+
+[data-theme='dark'] .sc-tracker-swatch--pending {
+  background: rgba(245, 158, 11, 0.3);
+  border-color: #f59e0b;
+}
+
+[data-theme='dark'] .sc-tracker-swatch--completed {
+  background: rgba(59, 130, 246, 0.3);
+  border-color: #3b82f6;
+}
+
+/* Agenda / selected date details in dark mode */
+[data-theme='dark'] .sc-tracker-agenda-date {
+  color: var(--sc-text, #f1f5f9);
+}
+
+[data-theme='dark'] .sc-tracker-agenda-count {
+  color: var(--sc-muted, #94a3b8);
+}
+
+[data-theme='dark'] .sc-tracker-past-pill {
+  background: var(--sc-surface-2, #16223b);
+  color: var(--sc-muted, #94a3b8);
+  border-color: var(--sc-border, #24314b);
+}
+
+[data-theme='dark'] .sc-tracker-empty,
+[data-theme='dark'] .sc-tracker-empty.is-past {
+  background: rgba(255, 255, 255, 0.02);
+  border-color: var(--sc-border, #24314b);
+}
+
+[data-theme='dark'] .sc-tracker-empty-title {
+  color: var(--sc-text, #f1f5f9);
+}
+
+[data-theme='dark'] .sc-tracker-item {
+  background: var(--sc-surface-2, #16223b);
+  border-color: var(--sc-border, #24314b);
+}
+
+[data-theme='dark'] .sc-tracker-item:hover {
+  background: #1c2a47;
+  border-color: #2e4064;
+}
+
+[data-theme='dark'] .sc-tracker-item .text-body {
+  color: var(--sc-text, #f1f5f9) !important;
+}
+
+[data-theme='dark'] .sc-tracker-item .border-top {
+  border-color: var(--sc-border, #24314b) !important;
+}
+
+[data-theme='dark'] .sc-attending-dentist-card {
+  background: var(--sc-surface, #111a2e);
+  border-color: var(--sc-border, #24314b);
+}
+
+[data-theme='dark'] .sc-dentist-portrait {
+  border-color: var(--sc-surface, #111a2e);
+}
+
+[data-theme='dark'] .sc-dentist-bio {
+  background-color: var(--sc-surface-2, #16223b);
+  border-color: var(--sc-border, #24314b) !important;
+}
+
+
 
 
