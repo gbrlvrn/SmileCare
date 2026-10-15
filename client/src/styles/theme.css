@@ -1524,7 +1524,7 @@ button:focus-visible,
   padding: 0;
   border-radius: 8px;
   border: 1px solid var(--sc-border);
-  background: #fff;
+  background: var(--bs-body-bg, #fff);
   color: var(--sc-muted);
   cursor: pointer;
   flex-shrink: 0;
@@ -1541,7 +1541,7 @@ button:focus-visible,
 .sc-sidebar-toggle-btn:hover {
   background: var(--sc-primary-soft);
   color: var(--sc-primary);
-  border-color: #bfd7fb;
+  border-color: var(--bs-primary-border-subtle, #bfd7fb);
 }
 
 .sc-sidebar-toggle-icon {
@@ -1578,9 +1578,9 @@ button:focus-visible,
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: #f8fafc;
-  border-color: #e2e8f0;
-  color: #475569;
+  background: var(--sc-app-bg, #f8fafc);
+  border-color: var(--sc-border, #e2e8f0);
+  color: var(--sc-muted, #475569);
   margin: 0 auto;
 }
 
@@ -1588,7 +1588,7 @@ button:focus-visible,
 .sc-sidebar-inner.is-collapsed .sc-sidebar-toggle-btn:hover {
   background: var(--sc-primary-soft);
   color: var(--sc-primary);
-  border-color: #bfd7fb;
+  border-color: var(--bs-primary-border-subtle, #bfd7fb);
   box-shadow: 0 2px 6px rgba(30, 111, 232, 0.12);
 }
 
@@ -4911,6 +4911,7 @@ html.sc-theme-animating *::after {
 [data-theme='dark'] .sc-slot:disabled,
 [data-theme='dark'] .sc-sidebar-hours,
 [data-theme='dark'] .sc-theme-toggle--sidebar,
+[data-theme='dark'] .sc-sidebar-toggle-btn,
 [data-theme='dark'] .sc-notification-tabs,
 [data-theme='dark'] .sc-notification-footer,
 [data-theme='dark'] .sc-profile-tip-card,
@@ -4936,6 +4937,7 @@ html.sc-theme-animating *::after {
 /* Hover / active states */
 [data-theme='dark'] .sc-nav-link:hover,
 [data-theme='dark'] .sc-sidebar-hours:hover,
+[data-theme='dark'] .sc-sidebar-toggle-btn:hover,
 [data-theme='dark'] .sc-notification-item:hover,
 [data-theme='dark'] .sc-notification-tab-btn:hover,
 [data-theme='dark'] .sc-action-trigger:hover,
@@ -4963,6 +4965,21 @@ html.sc-theme-animating *::after {
 
 [data-theme='dark'] .sc-nav-logout:hover .sc-nav-icon-wrap {
   color: #fca5a5;
+}
+
+[data-theme='dark'] .sc-sidebar.sc-sidebar--collapsed .sc-sidebar-toggle-btn,
+[data-theme='dark'] .sc-sidebar-inner.is-collapsed .sc-sidebar-toggle-btn {
+  background: var(--sc-surface-2) !important;
+  border-color: var(--sc-border) !important;
+  color: var(--sc-text) !important;
+}
+
+[data-theme='dark'] .sc-sidebar.sc-sidebar--collapsed .sc-sidebar-toggle-btn:hover,
+[data-theme='dark'] .sc-sidebar-inner.is-collapsed .sc-sidebar-toggle-btn:hover {
+  background: #1c2a47 !important;
+  border-color: #2e4064 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
 }
 
 [data-theme='dark'] .sc-sidebar-hours-icon {

@@ -1,14 +1,11 @@
 import { Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import Logo, { ToothIcon } from '../../components/Logo';
-import useAuth from '../../hooks/useAuth';
 import useDocumentTitle from '../../hooks/useDocumentTitle';
-import { getHomePath } from '../../utils/redirect';
 
 /** 404 page for unknown URLs. */
 export default function NotFound() {
   useDocumentTitle('Page not found');
-  const { isAuthenticated, user } = useAuth();
 
   return (
     <main className="sc-not-found" id="main-content">
@@ -23,14 +20,9 @@ export default function NotFound() {
           The page you’re looking for doesn’t exist or may have been moved.
         </p>
         <div className="d-flex flex-wrap justify-content-center gap-2">
-          <Button as={Link} to="/" variant="outline-primary">
+          <Button as={Link} to="/" variant="primary">
             Back to home
           </Button>
-          {isAuthenticated && (
-            <Button as={Link} to={getHomePath(user)}>
-              Go to dashboard
-            </Button>
-          )}
         </div>
       </div>
     </main>

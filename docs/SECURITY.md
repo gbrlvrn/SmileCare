@@ -78,6 +78,6 @@ helmet → cors → express.json(10kb) → mongoSanitize → (morgan, dev only) 
 
 ## Known trade-offs
 
-- **JWT in `localStorage`** (client): simple and works well with `Authorization` headers, but readable by injected scripts. XSS risk is reduced by React's output escaping, server-side tag stripping and Helmet's CSP. An httpOnly cookie would also need CSRF protection.
+- **JWT in `sessionStorage`** (client): simple and works well with `Authorization` headers. Storing in `sessionStorage` ensures closing the browser/tab clears the session, avoiding stale persistent access without explicit login while remaining accessible during active navigation and page refreshes. XSS risk is reduced by React's output escaping, server-side tag stripping and Helmet's CSP. An httpOnly cookie would also need CSRF protection.
 - **Stateless logout**: the server cannot revoke a token before it expires (1 day). Deactivating a user does block them immediately, because `protect` checks `isActive` on every request.
 - **In-memory rate-limit store**: counters reset when the server restarts and are not shared between instances. That is fine for a single Render instance; a Redis store would be needed to scale out.

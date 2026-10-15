@@ -7,8 +7,12 @@ import useAuth from '../hooks/useAuth';
  * Use as a layout route (renders <Outlet />) or wrap children.
  */
 export default function ProtectedRoute({ children }) {
-  const { isAuthenticated, isLoggingOut } = useAuth();
+  const { isAuthenticated, isLoggingOut, loading } = useAuth();
   const location = useLocation();
+
+  if (loading) {
+    return null;
+  }
 
   if (isLoggingOut || (typeof window !== 'undefined' && sessionStorage.getItem('smilecare_logging_out') === '1')) {
     return <Navigate to="/" replace />;
